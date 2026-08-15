@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# --- InvisiblePlayer: build výstupy mimo strom projektu ---
+# Používáme `dotnet build --artifacts-path ~/build/InvisiblePlayer`, aby obj/bin
+# nekončily na exFAT svazku. Tenhle blok kryje i případ, kdy někdo staví klasicky.
+artifacts/

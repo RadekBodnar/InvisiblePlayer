@@ -1,0 +1,61 @@
+<Project>
+
+  <!--
+    Společné nastavení pro všechny projekty v řešení. Dřív byly TargetFramework,
+    Nullable a ImplicitUsings zduplikované ve všech čtyřech .csproj.
+
+    Hlavní přínos je TreatWarningsAsErrors: právě jeho absence nechala v repu
+    přežít dvě CS8618 (VoicePreset.Harmonics, ActiveNote.Voice) - překladač je
+    hlásil, ale nikdo je nemusel vidět.
+  -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!--
+      Rozdělení, na kterém záleží:
+
+        TreatWarningsAsErrors        -> překladačová (CS*) varování = CHYBA.
+                                        Tohle je to cenné: CS8618 (lživá nullable
+                                        anotace), CS0162 (nedosažitelný kód), CS4014
+                                        (zapomenuté await). Takové věci znamenají
+                                        vadu, ne názor na styl.
+
+        CodeAnalysisTreatWarningsAsErrors=false
+                                     -> analyzátorová (CA*) varování zůstávají
+                                        VAROVÁNÍM. Jsou vidět, ale nezastaví build.
+
+      Bez toho druhého by zapnutí analyzátorů rozbilo build 10 stylovými nálezy
+      (CA1707 podtržítka, CA1805 explicitní default, CA1051 veřejná pole) a jediná
+      reálná reakce by byla TreatWarningsAsErrors zase vypnout - tedy zahodit
+      i tu užitečnou polovinu. Analyzátory se zavádějí postupně, ne velkým třeskem.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+  </PropertyGroup>
+
+  <!--
+    Umožňuje přeložit net8.0-windows / WPF projekty i na Linuxu a v CI.
+    Ověřeno 2026-08-15: `dotnet build -p:EnableWindowsTargeting=true` projde na
+    Ubuntu 26.04 se SDK 8.0.424 VČETNĚ XAML markup kompilace. Spustit je pochopitelně
+    nelze - WPF běhově zůstává Windows-only. Slouží k překladu a analýze, ne k běhu.
+  -->
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <!--
+    NU1701: ScottPlot.WPF táhne tranzitivně SkiaSharp.Views.WPF, který nemá
+    net8.0-windows assety a restoruje se přes .NET Framework fallback.
+    Není to náš kód a nemáme to jak ovlivnit jinak než výměnou ScottPlotu,
+    takže warning tlumíme cíleně - ne globálním vypnutím TreatWarningsAsErrors.
+    TODO: prověřit při příštím upgradu ScottPlotu.
+  -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+
+</Project>

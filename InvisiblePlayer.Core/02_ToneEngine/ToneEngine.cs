@@ -10,7 +10,11 @@ namespace InvisiblePlayer.Core.ToneEngine
     {
         public int NoteNumber { get; set; }   // MIDI číslo noty (např. 60 = C4)
         public double Frequency { get; set; } // Kmitočet v Hz (např. 261.63 Hz)
-        public OrganVoice Voice { get; set; } // Samostatná instance hlasu
+
+        // 'required': hlas musí být vždy přiřazen. Bez toho šlo o non-nullable
+        // vlastnost bez inicializátoru (CS8618) - anotace slibovala "nikdy null",
+        // ale nic to nevynucovalo. Volající (NoteOn) ho stejně vždy nastavuje.
+        public required OrganVoice Voice { get; set; }
     }
 
 

@@ -1,0 +1,41 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{cs,csproj,props,targets,xaml,xml}]
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.cs]
+
+# ----------------------------------------------------------------------------
+# Trvale vypnutá pravidla - s odůvodněním, ne "protože to řvalo".
+# ----------------------------------------------------------------------------
+
+# CA1707: Odstraňte podtržítka z názvů typů.
+# ZÁMĚRNÁ KONVENCE PROJEKTU, ne nedbalost. Názvy jako _001_Bombard16Preset,
+# _085_Aeolus, _200_Piano_Petrof kódují ČÍSLO REJSTŘÍKU podle fyzických popisků
+# na hracím stole nástroje (viz 01_Input/RegisterNumbers.cs). Číslo je součástí
+# domény - přejmenování na Bombard16Preset by tu informaci zahodilo.
+dotnet_diagnostic.CA1707.severity = none
+
+# CA1805: Člen je explicitně inicializován na výchozí hodnotu.
+# U DSP kódu je "_phase = 0.0" a "CurrentLevel = 0.0f" čitelnější než spoléhání
+# na implicitní default - u fázových akumulátorů je počáteční hodnota podstatná
+# informace pro čtenáře.
+dotnet_diagnostic.CA1805.severity = suggestion
+
+# ----------------------------------------------------------------------------
+# Pravidla, která NEVYPÍNÁME - jsou to reálné nálezy k opravě.
+# Viz TODO.md. Necháváme je jako warning, aby byla vidět.
+#   CA1051 - veřejná instanční pole (SynthVoice.SampleRate)
+#   CA1816 - Dispose bez GC.SuppressFinalize (InputManager)
+#   CA1050 - typ mimo namespace (Temperament)  -> TODO L3
+# ----------------------------------------------------------------------------
