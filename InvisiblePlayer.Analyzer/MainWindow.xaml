@@ -20,7 +20,7 @@
         <!-- 0. HORNI LISTA -->
         <WrapPanel Grid.Row="0" Margin="0,0,0,10" VerticalAlignment="Center">
             <TextBlock Text="Vstup:" Foreground="White" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
-            <ComboBox x:Name="ComboMicrophones" Width="180" Margin="0,0,10,0"/>
+            <ComboBox x:Name="ComboMicrophones" Width="180" Margin="0,0,10,0" SelectionChanged="ComboMicrophones_SelectionChanged"/>
 
             <TextBlock Text="Okno FFT:" Foreground="White" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
             <ComboBox x:Name="ComboFftSize" Width="190" Margin="0,0,10,0" SelectionChanged="ComboFftSize_SelectionChanged"/>

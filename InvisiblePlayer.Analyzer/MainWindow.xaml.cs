@@ -18,15 +18,31 @@ namespace InvisiblePlayer.Analyzer
         private WaveInEvent? _waveIn;
         private const int SampleRate = 44100;
 
+        // _fftSize a _sampleBuffer vlastní VÝHRADNĚ audio vlákno (OnAudioDataAvailable).
+        // UI vlákno velikost nemění přímo - jen zapíše požadavek do _pendingFftSize
+        // a audio vlákno ho vyzvedne na hranici okna. Přímá výměna reference z UI
+        // vlákna dřív mohla trefit okamžik mezi kontrolou délky a zápisem
+        // (IndexOutOfRangeException při zmenšení 262144 -> 8192).
         private int _fftSize = 8192;
         private float[] _sampleBuffer = new float[8192];
         private int _bufferIndex = 0;
         private float _maxPeak = 0;
 
-        private DateTime _lastRenderTime = DateTime.MinValue;
-        private bool _isFrozen = false;
-        private bool _waitForSnap = false;
-        private bool _isMeasuringSnap = false;
+        // Požadavek na změnu velikosti FFT z UI vlákna. 0 = nic nečeká.
+        private volatile int _pendingFftSize;
+
+        // Běží už jedno překreslení na UI vlákně? Přechod z blokujícího
+        // Dispatcher.Invoke na neblokující InvokeAsync odstraní zablokování audio
+        // vlákna, ale zároveň odstraní i zpětný tlak - fronta InvokeAsync by rostla
+        // donekonečna, kdyby UI nestíhalo. Tenhle příznak frontu drží na max 1 položce.
+        private volatile bool _renderPending;
+
+        // Zapisuje UI vlákno, čte audio vlákno -> volatile kvůli viditelnosti.
+        // _waitForSnap se navíc čte v těsné per-sample smyčce, kde by JIT jinak
+        // směl hodnotu nacachovat do registru a zápis nikdy neuvidět.
+        private volatile bool _isFrozen = false;
+        private volatile bool _waitForSnap = false;
+        private volatile bool _isMeasuringSnap = false;
 
         public MainWindow()
         {
@@ -250,17 +266,43 @@ namespace InvisiblePlayer.Analyzer
 
         private void ComboFftSize_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            switch (ComboFftSize.SelectedIndex)
+            int requested = ComboFftSize.SelectedIndex switch
             {
-                case 0: _fftSize = 8192; break;
-                case 1: _fftSize = 16384; break;
-                case 2: _fftSize = 65536; break;
-                case 3: _fftSize = 262144; break;
-                default: _fftSize = 16384; break;
+                0 => 8192,
+                1 => 16384,
+                2 => 65536,
+                3 => 262144,
+                _ => 16384,
+            };
+
+            // Buffer NEPŘEALOKOVÁVÁME zde - to je UI vlákno a audio vlákno do pole
+            // právě zapisuje. Jen předáme požadavek; vyzvedne si ho ApplyPendingFftSize()
+            // na hranici okna, tedy v okamžiku, kdy je _bufferIndex stejně nulován.
+            _pendingFftSize = requested;
+
+            // Startovní volání (z InitFftOptions v konstruktoru) proběhne dřív, než
+            // se rozjede capture - tam je bezpečné aplikovat rovnou.
+            if (_waveIn == null) ApplyPendingFftSize();
+        }
+
+        /// <summary>
+        /// Vyzvedne čekající změnu velikosti FFT. Volá se VÝHRADNĚ z audio vlákna
+        /// (nebo před jeho startem), takže výměna reference nemůže kolidovat se zápisem.
+        /// </summary>
+        private void ApplyPendingFftSize()
+        {
+            int pending = _pendingFftSize;
+            if (pending == 0 || pending == _fftSize)
+            {
+                _pendingFftSize = 0;
+                return;
             }
 
-            _sampleBuffer = new float[_fftSize];
+            _fftSize = pending;
+            _sampleBuffer = new float[pending];
             _bufferIndex = 0;
+            _maxPeak = 0;
+            _pendingFftSize = 0;
         }
 
         private void SetupPlot()
@@ -299,12 +341,57 @@ namespace InvisiblePlayer.Analyzer
             _waveIn.StartRecording();
         }
 
+        private void StopAudioCapture()
+        {
+            if (_waveIn == null) return;
+
+            _waveIn.DataAvailable -= OnAudioDataAvailable;
+            _waveIn.StopRecording();
+            _waveIn.Dispose();
+            _waveIn = null;
+        }
+
+        /// <summary>
+        /// Přepnutí vstupního zařízení za běhu. Bez tohoto handleru se index mikrofonu
+        /// četl jen jednou při startu a výběr v UI neměl žádný efekt - u měřicího
+        /// nástroje to znamenalo měřit z jiného vstupu, než uživatel vidí zvolený.
+        /// </summary>
+        private void ComboMicrophones_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Startovní naplnění comboboxu (LoadMicrophones v konstruktoru) proběhne
+            // dřív než StartAudioCapture - tehdy není co restartovat.
+            if (_waveIn == null) return;
+
+            StopAudioCapture();
+
+            // Nové zařízení = nesouvisející signál, staré okno by bylo slepencem dvou vstupů.
+            _bufferIndex = 0;
+            _maxPeak = 0;
+
+            StartAudioCapture();
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            // Bez tohoto zůstalo nahrávací zařízení obsazené a callback běžel dál
+            // nad zavřeným oknem.
+            StopAudioCapture();
+            base.OnClosed(e);
+        }
+
 
 
 
         private void OnAudioDataAvailable(object? sender, WaveInEventArgs e)
         {
-            for (int i = 0; i < e.BytesRecorded; i += 2)
+            // Čekající změnu velikosti FFT vyzvedneme na začátku bloku, tedy mimo
+            // zápisovou smyčku - jsme na audio vlákně, které pole vlastní.
+            if (_pendingFftSize != 0) ApplyPendingFftSize();
+
+            // Lichý počet bytů by na posledním kroku sáhl za platná data.
+            int usableBytes = e.BytesRecorded - (e.BytesRecorded % 2);
+
+            for (int i = 0; i < usableBytes; i += 2)
             {
                 short sample = (short)(e.Buffer[i] | (e.Buffer[i + 1] << 8));
                 float floatSample = sample / 32768.0f;
@@ -342,8 +429,9 @@ namespace InvisiblePlayer.Analyzer
                         _isFrozen = true;
                         _isMeasuringSnap = false;
 
-                        // Aktualizaci tlačítka pošleme bezpečně na UI vlákno
-                        Dispatcher.Invoke(() => BtnSnap.Content = "📸 SNAP [Enter]");
+                        // Aktualizaci tlačítka pošleme na UI vlákno neblokujícím způsobem -
+                        // jsme v audio callbacku, čekat tu na UI znamená vypadlé vzorky.
+                        Dispatcher.InvokeAsync(() => BtnSnap.Content = "📸 SNAP [Enter]");
                     }
                 }
             }
@@ -383,8 +471,16 @@ namespace InvisiblePlayer.Analyzer
             double peakDb = 20 * Math.Log10(Math.Max(peak, 1e-4));
             double vuPercent = Math.Min(100, Math.Max(0, (peakDb + 60) * (100.0 / 60.0)));
 
-            Dispatcher.Invoke(() =>
+            // Předchozí překreslení ještě běží -> tenhle snímek zahodíme. Bez toho by
+            // fronta InvokeAsync rostla donekonečna, kdyby UI nestíhalo tempo capture.
+            // Výjimka: SNAP odchyt musí projít vždy, jinak by uživateli utekl.
+            if (_renderPending && !_isMeasuringSnap) return;
+            _renderPending = true;
+
+            Dispatcher.InvokeAsync(() =>
             {
+              try
+              {
                 // 1. VU METR SE AKTUALIZUJE VŽDY
                 VuMeter.Value = vuPercent;
                 TxtVuDb.Text = $"{peakDb:F1} dB";
@@ -408,6 +504,13 @@ namespace InvisiblePlayer.Analyzer
 
                 // Výpočet a výpis Kouzla
                 ApplyMagicAnalysis(freqsLog, magnitudesDb, freqsHz);
+              }
+              finally
+              {
+                // MUSÍ být ve finally - i větev "return" u _isFrozen musí frontu uvolnit,
+                // jinak by se po prvním zmrazení grafu překreslování zaseklo natrvalo.
+                _renderPending = false;
+              }
             });
         }
 
