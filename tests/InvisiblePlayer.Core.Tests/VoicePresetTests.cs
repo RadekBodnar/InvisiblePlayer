@@ -154,6 +154,47 @@ public class SynthVoiceTests
         Assert.NotEqual(organ, RenderWith(InstrumentType.Bell));
     }
 
+    /// <summary>
+    /// Regresní test k S5, ověřený přes DŮSLEDEK, ne přes vnitřní stav.
+    ///
+    /// Němé cembalové hlasy se dřív hromadily v seznamu ToneEngine a přes
+    /// voiceCount snižovaly kompenzací 1/sqrt(N) hlasitost tónů, které skutečně
+    /// zněly. Test tedy nechá doznít deset not a pak zahraje jedenáctou:
+    /// její amplituda musí odpovídat sólovému tónu, ne tónu utlumenému
+    /// o sqrt(11).
+    /// </summary>
+    [Fact]
+    public void ToneEngine_DoznelaCembalovaNota_NetlumiDalsi()
+    {
+        static double PeakOfFreshNote(int warmupNotes)
+        {
+            var engine = new InvisiblePlayer.Core.Synthesis.ToneEngine(44100.0, null, noiseSeed: 7)
+            {
+                CurrentPreset = _300_Cembalo_RandallHopkirk.Preset,
+            };
+
+            // Necháme doznít několik not (cembalo má SustainLevel = 0, decay 0,9 s).
+            for (int n = 0; n < warmupNotes; n++)
+            {
+                engine.NoteOn(48 + n);
+                for (int i = 0; i < 44100 * 2; i++) engine.GenerateNextMixSample();
+            }
+
+            // Teprve teď zahrajeme sledovanou notu.
+            engine.NoteOn(60);
+            double peak = 0;
+            for (int i = 0; i < 4096; i++) peak = Math.Max(peak, Math.Abs(engine.GenerateNextMixSample()));
+            return peak;
+        }
+
+        double solo = PeakOfFreshNote(warmupNotes: 0);
+        double afterTen = PeakOfFreshNote(warmupNotes: 10);
+
+        Assert.True(solo > 0.01, $"Sólový tón je příliš tichý ({solo:F4}) — test by nic neměřil.");
+        Assert.True(Math.Abs(afterTen - solo) < solo * 0.01,
+            $"Doznělé hlasy tlumí nové tóny: sólo {solo:F4} vs po deseti {afterTen:F4}");
+    }
+
     [Fact]
     public void OrganVoice_PoNoteOffDojedeDoIsFinished()
     {

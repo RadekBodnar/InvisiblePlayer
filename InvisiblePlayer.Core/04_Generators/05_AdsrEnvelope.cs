@@ -66,7 +66,7 @@ namespace InvisiblePlayer.Core.Generators
                     if (DecayTime <= 0.0f)
                     {
                         CurrentLevel = SustainLevel;
-                        State = EnvelopeState.Sustain;
+                        State = StateAfterDecay();
                     }
                     else
                     {
@@ -74,13 +74,17 @@ namespace InvisiblePlayer.Core.Generators
                         if (CurrentLevel <= SustainLevel)
                         {
                             CurrentLevel = SustainLevel;
-                            State = EnvelopeState.Sustain;
+                            State = StateAfterDecay();
                         }
                     }
                     break;
 
                 case EnvelopeState.Sustain:
                     CurrentLevel = SustainLevel;
+
+                    // Pojistka pro případ, že se SustainLevel sníží na nulu až
+                    // za běhu tónu - i pak musí obálka dojet do Idle.
+                    if (SustainLevel <= 0.0f) State = EnvelopeState.Idle;
                     break;
 
                 case EnvelopeState.Release:
@@ -103,6 +107,26 @@ namespace InvisiblePlayer.Core.Generators
 
             return Math.Clamp(CurrentLevel, 0.0f, 1.0f);
         }
+
+        /// <summary>
+        /// Kam obálka přejde po dokončení decay.
+        /// </summary>
+        /// <remarks>
+        /// OPRAVA S5: dřív se vždy šlo do Sustain. U nástrojů se SustainLevel = 0
+        /// (CembaloVoice, BellVoice - brnknutá struna a zvon sustain nemají, jen
+        /// doznívají) tam obálka uvázla trvale na úrovni 0: byla němá, ale
+        /// IsActive hlásilo true, takže SynthVoice.IsFinished zůstalo false
+        /// a ToneEngine hlas nikdy neodstranil ze seznamu.
+        ///
+        /// Následek: němé hlasy se hromadily a přes voiceCount snižovaly
+        /// kompenzací 1/sqrt(N) hlasitost tónů, které skutečně zněly - deset
+        /// dohraných cembalových not utlumilo jedenáctou o ~10 dB.
+        ///
+        /// Sustain na nulové úrovni nedává smysl: tón, který doznívá do ticha,
+        /// je dohraný.
+        /// </remarks>
+        private EnvelopeState StateAfterDecay()
+            => SustainLevel <= 0.0f ? EnvelopeState.Idle : EnvelopeState.Sustain;
 
         public void Reset()
         {

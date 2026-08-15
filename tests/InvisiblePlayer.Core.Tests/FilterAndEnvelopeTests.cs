@@ -100,19 +100,16 @@ public class AdsrEnvelopeTests
     }
 
     /// <summary>
-    /// CHARAKTERIZAČNÍ TEST ke známé vadě S5 (viz TODO.md).
+    /// OPRAVA S5: obálka se SustainLevel = 0 (CembaloVoice, BellVoice) musí po
+    /// doznění decay skončit v Idle, ne uvíznout v Sustain na nulové úrovni.
     ///
-    /// Zachycuje SOUČASNÉ chování, ne to správné: hlas se SustainLevel = 0
-    /// (CembaloVoice, BellVoice) po doznění decay uvázne ve stavu Sustain
-    /// s úrovní 0 - je trvale němý, ale IsActive zůstává true, takže se
-    /// v ToneEngine nikdy neodstraní ze seznamu a přes voiceCount zbytečně
-    /// tlumí ostatní tóny.
-    ///
-    /// AŽ SE S5 OPRAVÍ, TENHLE TEST ZAČNE PADAT. To je záměr - připomene, že
-    /// se má přepsat na Assert.Equal(EnvelopeState.Idle, env.State).
+    /// Dřív tam uvázla trvale: byla němá, ale IsActive hlásilo true, takže
+    /// SynthVoice.IsFinished zůstalo false a ToneEngine hlas nikdy neodstranil.
+    /// (Tento test vznikl jako charakterizační pro tehdejší vadné chování;
+    /// po opravě byl přepsán — přesně proto tam byl.)
     /// </summary>
     [Fact]
-    public void ZNAMA_VADA_S5_SustainNula_UvizneVeStavuSustain()
+    public void SustainNula_PoDozneniDecayDojedeDoIdle()
     {
         var env = new AdsrEnvelope
         {
@@ -124,9 +121,29 @@ public class AdsrEnvelopeTests
 
         for (int i = 0; i < SampleRate; i++) env.Process(SampleRate);
 
-        Assert.Equal(EnvelopeState.Sustain, env.State);
+        Assert.Equal(EnvelopeState.Idle, env.State);
         Assert.Equal(0.0f, env.CurrentLevel);
-        Assert.True(env.IsActive, "Aktuálně zůstává 'aktivní', ačkoli je němý - to je ta vada.");
+        Assert.False(env.IsActive, "Němý hlas se musí dát uklidit ze seznamu.");
+    }
+
+    [Fact]
+    public void SustainNenulovy_PoDozneniDecayZustaneVSustain()
+    {
+        // Kontrola, že se oprava S5 netýká varhanní obálky (SustainLevel = 1.0),
+        // která má držet tón, dokud je klávesa stisknutá.
+        var env = new AdsrEnvelope
+        {
+            AttackTime = 0.001f,
+            DecayTime = 0.05f,
+            SustainLevel = 0.8f,
+        };
+        env.TriggerGate(true);
+
+        for (int i = 0; i < SampleRate; i++) env.Process(SampleRate);
+
+        Assert.Equal(EnvelopeState.Sustain, env.State);
+        Assert.Equal(0.8f, env.CurrentLevel, precision: 5);
+        Assert.True(env.IsActive);
     }
 }
 
