@@ -1,7 +1,7 @@
-# FEATURES.md — Funkční registr
+﻿# FEATURES.md — Funkční registr
 
 > Poslední audit: 2026-08-15
-> Zdroje: git historie, zdrojový kód, testy (`tests/InvisiblePlayer.Core.Tests`, 114 testů), README
+> Zdroje: git historie, zdrojový kód, testy (`tests/InvisiblePlayer.Core.Tests`, 125 testů), README
 > Otevřené problémy: `TODO.md` · Vyřešené: `RESOLVED.md` · Původní review: `CODE_REVIEW_2026-08-15.md`
 
 **Před KAŽDÝM commitem** projdi položky se stavem DONE / DEGRADED a ověř, že je změna
@@ -97,7 +97,7 @@ je to samo o sobě nález do `TODO.md`.
 - **Popis:** `ReadClipDetected()` hlásí, jestli od posledního čtení došlo k ořezu
   alespoň jednoho vzorku. Příznak se drží (latching), protože ořez trvá jediný vzorek,
   zatímco VU metr čte po desítkách ms.
-- **Soubory:** `02_Synthesis/ToneEngine.cs`, `06_Output/Audio.cs`
+- **Soubory:** `02_Synthesis/ToneEngine.cs`, `UI.Windows/AudioEngine.cs`
 - **Tests:** `ToneEngineTests.ReadClipDetected_*`
 - **Přidáno:** 2026-08-15 — commit `529b29a` (nález B2)
 - **Poznámka:** Zatím to nikdo nekonzumuje — VU metr ve `VgaEngine` clip indikátor nemá.
@@ -111,7 +111,7 @@ je to samo o sobě nález do `TODO.md`.
 - **Popis:** `InputManager.StartLiveDevice()` se připojí k MIDI zařízení podle části
   názvu a přeposílá NoteOn/NoteOff.
 - **Soubory:** `01_Input/InputManager.cs`
-- **Tests:** ŽÁDNÉ — vyžaduje fyzické MIDI zařízení (viz `TODO.md` P11)
+- **Tests:** ŽÁDNÉ — vyžaduje fyzické MIDI zařízení (viz `TODO.md` P13)
 - **Omezení:** Netestováno. Název zařízení je natvrdo `"USB MIDI"` v `App.OnStartup`.
 
 #### F-011: Přehrávání MIDI souboru
@@ -120,8 +120,8 @@ je to samo o sobě nález do `TODO.md`.
   do stejného kanálu jako živý vstup. Chyba čtení se hlásí událostí `OnPlaybackError`.
 - **Soubory:** `01_Input/InputManager.cs`
 - **Tests:** ŽÁDNÉ
-- **Omezení:** MIDI kanál se v `ToneEngine` zahazuje — všechny stopy hrají jedním
-  rejstříkem (souvisí s `TODO.md` S8).
+- **Omezení:** všechny stopy hrají jedním rejstříkem (`CurrentPreset`); rozlišit
+  se dá jen mutováním kanálů (F-023).
 
 ---
 
@@ -150,8 +150,9 @@ je to samo o sobě nález do `TODO.md`.
   (ScottPlot), VU metrem a funkcí SNAP pro zmrazení okamžiku.
 - **Soubory:** `InvisiblePlayer.Analyzer/MainWindow.xaml{,.cs}`
 - **Tests:** ŽÁDNÉ pro UI vrstvu (čistá analytika je v F-012/F-013)
-- **Omezení:** Nelze spustit ani otestovat na Linuxu. Číselný výstup používá aktuální
-  kulturu (v ČR desetinná čárka), takže hodnoty nejdou přímo přepsat do C# presetu.
+- **Omezení:** Nelze spustit ani otestovat na Linuxu (jen přeložit).
+- **Poznámka:** Čísla se od opravy P12 formátují invariantně (desetinná tečka),
+  aby šly odečtené hodnoty rovnou přepsat do `VoicePreset` v C#.
 
 ---
 
@@ -167,6 +168,17 @@ je to samo o sobě nález do `TODO.md`.
 - **Poznámka:** Vyhledání výchozího souboru je case-insensitive kvůli Windows —
   **na Linuxu to nelze otestovat** (`File.Exists` selže dřív).
 
+#### F-023: Mutování MIDI kanálů
+- **Stav:** ✅ DONE
+- **Popis:** Kanály 1–10 lze umlčet klávesami `1`–`9` a `0`. Umlčení zároveň
+  ukončí tóny, které na kanálu právě znějí — jinak by u drženého akordu zabralo
+  až u další noty a tvářilo se, že nefunguje.
+- **Soubory:** `02_Synthesis/ToneEngine.cs`, `UI.Windows/VgaEngine.cs`, `App.xaml.cs`
+- **Tests:** `ChannelMuteTests`
+- **Přidáno:** 2026-08-15 (nález S8)
+- **Poznámka:** Tentýž tón na dvou kanálech jsou dva nezávislé hlasy — hlas se
+  hledá podle noty **i** kanálu.
+
 #### F-016: VGA konzolové rozhraní
 - **Stav:** ⚠️ DEGRADED
 - **Popis:** Textový dashboard v konzoli: název souboru, čas, hlasitost, VU metry,
@@ -174,7 +186,7 @@ je to samo o sobě nález do `TODO.md`.
 - **Soubory:** `InvisiblePlayer.UI.Windows/VgaEngine.cs`
 - **Tests:** ŽÁDNÉ — vyžaduje Windows konzoli
 - **Omezení:** Obsluha myši (kolečko, kliky) je pravděpodobně nedosažitelná — viz
-  `TODO.md` M5. Mutování MIDI kanálů neexistuje (S8).
+  `TODO.md` M5.
 
 #### F-017: Přehrávání audia s VU metrem
 - **Stav:** ⚠️ DEGRADED
@@ -203,13 +215,15 @@ je to samo o sobě nález do `TODO.md`.
 ## Hardware (InvisiblePlayer.Raspi)
 
 #### F-020: Ovladač I²C expandéru MCP23016
-- **Stav:** 📋 PLANNED
+- **Stav:** ❌ REMOVED (odloženo)
 - **Popis:** Čtení 16 kontaktů (klávesy, sklopky) a řízení LED podsvícení.
   Adresy registrů odpovídají MCP23016 (pozor na záměnu s MCP23017).
 - **Soubory:** `InvisiblePlayer.Raspi/Hardware/Mcp23016Controller.cs`
 - **Tests:** ŽÁDNÉ — vyžaduje fyzický hardware
-- **Omezení:** `OrganHardwareManager.UpdateHardwareState` má prázdná těla cyklů,
-  projekt nemá vstupní bod. Viz `TODO.md` P7.
+- **Omezení:** **Rozhodnutí 2026-08-15: projekt je Windows-only** (nález P7).
+  Hardwarová větev je tím odložená — `Raspi` nemá vstupní bod, `UpdateHardwareState`
+  má prázdná těla cyklů a chybí ALSA výstup. Kód zůstává jako kostra pro případ,
+  že se rozhodnutí přehodnotí.
 
 ---
 

@@ -1,7 +1,6 @@
-﻿using InvisiblePlayer.Core;            // Pro AudioEngine
+﻿using InvisiblePlayer.Core;
 using InvisiblePlayer.Core.Generators;
 using InvisiblePlayer.Core.Input;      // Pro InputManager
-using InvisiblePlayer.Core.Output;
 using InvisiblePlayer.Core.Synthesis;
 using System;
 using System.IO;
@@ -61,6 +60,10 @@ namespace InvisiblePlayer.UI.Windows
         // přistoupit i jiné statické třídy jako VgaEngine (pro VU metr).
         public static AudioEngine? OrganEngine { get; private set; }
 
+        // Zpřístupněno kvůli mutování MIDI kanálů z VgaEngine (nález S8).
+        // Stejný vzor jako OrganEngine výše - VgaEngine je statická třída.
+        public static ToneEngine? OrganToneEngine { get; private set; }
+
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -74,6 +77,7 @@ namespace InvisiblePlayer.UI.Windows
             _audioEngine.Start();
 
             OrganEngine = _audioEngine;
+            OrganToneEngine = _toneEngine;
 
             // 2. INICIALIZACE CORE INPUTU (Živé piano z USB / Casio)
             _inputManager = new InputManager();
@@ -81,13 +85,14 @@ namespace InvisiblePlayer.UI.Windows
             _inputManager.OnInputEvent += evt =>
             {
                 // ZVUK! Předáme stisknutou / uvolněnou notu přímo do ToneEngine
+                // Kanál se předává dál - bez něj nešlo mutovat jednotlivé stopy (S8).
                 if (evt.Type == InputEventType.NoteOn && evt.Velocity > 0)
                 {
-                    _toneEngine?.NoteOn(evt.Note.Number);
+                    _toneEngine?.NoteOn(evt.Note.Number, evt.Channel);
                 }
                 else
                 {
-                    _toneEngine?.NoteOff(evt.Note.Number);
+                    _toneEngine?.NoteOff(evt.Note.Number, evt.Channel);
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[{evt.Source}] {evt.Type} | Nota: {evt.Note.Number} ({evt.Note.FrequencyHz:F1} Hz)");

@@ -102,6 +102,10 @@ namespace InvisiblePlayer.UI.Windows
             return (MaxLeftPeak, MaxRightPeak);
         }
 
-        public void Dispose() => Stop();
+        public void Dispose()
+        {
+            Stop();
+            GC.SuppressFinalize(this);
+        }
     }
 }

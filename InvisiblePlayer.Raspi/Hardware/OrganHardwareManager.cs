@@ -29,7 +29,7 @@ namespace InvisiblePlayer.Raspi.Hardware
             }
         }
 
-        public void ApplyFreeCombination(CombinationBank combination, List<OrganStop> stops)
+        public static void ApplyFreeCombination(CombinationBank combination, List<OrganStop> stops)
         {
             foreach (var stop in stops)
             {

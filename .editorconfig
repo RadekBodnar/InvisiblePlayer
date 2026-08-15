@@ -39,3 +39,18 @@ dotnet_diagnostic.CA1805.severity = suggestion
 #   CA1816 - Dispose bez GC.SuppressFinalize (InputManager)
 #   CA1050 - typ mimo namespace (Temperament)  -> TODO L3
 # ----------------------------------------------------------------------------
+
+# CA1001: Typ vlastní IDisposable pole, ale sám IDisposable není.
+# U WPF tříd (App, Window) je to falešný poplach: úklid dělá framework
+# přes OnExit / OnClosed, což jsou právě ty body životního cyklu, ve kterých
+# se u WPF uklízet má. Implementovat IDisposable na Application nebo Window
+# by znamenalo druhou, konkurenční cestu k témuž.
+[*.xaml.cs]
+dotnet_diagnostic.CA1001.severity = none
+
+# CA1014: Označte assembly atributem CLSCompliant.
+# Pravidlo cílí na KNIHOVNY publikované pro cizí konzumenty. InvisiblePlayer
+# je aplikace, žádnou assembly nevydáváme jako balíček - atribut by byl
+# ceremonie bez adresáta.
+[*.cs]
+dotnet_diagnostic.CA1014.severity = none

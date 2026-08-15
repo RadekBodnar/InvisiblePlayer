@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -23,6 +23,12 @@ namespace InvisiblePlayer.Core.Analysis
     /// </remarks>
     public static class SpectrumAnalysis
     {
+        // OPRAVA P12: čísla se formátují INVARIANTNĚ, tedy s desetinnou TEČKOU.
+        // Není to nedbalost vůči české lokalizaci - výstup analyzátoru slouží
+        // k odečtení hodnot, které se ručně přepisují do VoicePreset v C# kódu.
+        // "0,5000" by se do zdrojáku přepsat nedalo, "0.5000" ano.
+        // Popisky a hlášky zůstávají česky; invariantní je jen ČÍSLO.
+
         /// <summary>
         /// Koherentní zisk Hannova okna. Okno signál v průměru zeslabí na polovinu,
         /// takže se jím musí naměřená amplituda vydělit - jinak vyjde o ~6 dB nižší.
@@ -57,8 +63,8 @@ namespace InvisiblePlayer.Core.Analysis
             double windowCoherentGain = HannCoherentGain,
             double floorDb = DefaultFloorDb)
         {
-            if (fftSize <= 0) throw new ArgumentOutOfRangeException(nameof(fftSize));
-            if (windowCoherentGain <= 0.0) throw new ArgumentOutOfRangeException(nameof(windowCoherentGain));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(fftSize);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(windowCoherentGain);
 
             // *2 = součet kladné a zrcadlové záporné frekvence, /n = normalizace FFT,
             // /gain = kompenzace útlumu okna.
@@ -114,10 +120,10 @@ namespace InvisiblePlayer.Core.Analysis
             var main = sorted[0];
 
             var lines = sorted.Take(12).Select(p => string.Format(
-                CultureInfo.CurrentCulture,
+                CultureInfo.InvariantCulture,
                 "{0:F1}Hz ({1:F4}x | {2:F1}dB)", p.FrequencyHz, p.FrequencyHz / main.FrequencyHz, p.Db - main.Db));
 
-            return string.Format(CultureInfo.CurrentCulture,
+            return string.Format(CultureInfo.InvariantCulture,
                 "[VARHANY] DOMINANTA = {0:F1} Hz ({1:F1} dBFS)\nTop Čáry (Hz | Násobek | Rel dB): {2}",
                 main.FrequencyHz, main.Db, string.Join(" | ", lines));
         }
@@ -135,10 +141,10 @@ namespace InvisiblePlayer.Core.Analysis
             var main = sorted[0];
 
             var lines = sorted.Take(10).Select(p => string.Format(
-                CultureInfo.CurrentCulture,
+                CultureInfo.InvariantCulture,
                 "{0:F1}Hz ({1:F4}x | {2:F1}dB)", p.FrequencyHz, p.FrequencyHz / main.FrequencyHz, p.Db));
 
-            return string.Format(CultureInfo.CurrentCulture,
+            return string.Format(CultureInfo.InvariantCulture,
                 "[ZVON] Hlavní pík: {0:F1} Hz\nInharmonická řada čár: {1}",
                 main.FrequencyHz, string.Join(" | ", lines));
         }
@@ -174,7 +180,7 @@ namespace InvisiblePlayer.Core.Analysis
             double fLow20 = ScanForDrop(freqsHz, db, maxIdx, maxDb - 20.0, forward: false);
             double fHigh20 = ScanForDrop(freqsHz, db, maxIdx, maxDb - 20.0, forward: true);
 
-            return string.Format(CultureInfo.CurrentCulture,
+            return string.Format(CultureInfo.InvariantCulture,
                 "[ŠUM / FILTR] Předpis pro filtr bílého šumu:\n" +
                 "1. PÁSMOVÁ PROPUST (BPF 2.řád, 20dB/dek): Střed f0 = {0:F0} Hz | Jakost Q ≈ {1:F2}\n" +
                 "2. KASKÁDA (HP + LP 20dB/dek): HP Cutoff (-20dB) = {2:F0} Hz | LP Cutoff (-20dB) = {3:F0} Hz",

@@ -175,6 +175,8 @@ namespace InvisiblePlayer.Core.Input
                 _liveMidiDevice.StopEventsListening();
                 _liveMidiDevice.Dispose();
             }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

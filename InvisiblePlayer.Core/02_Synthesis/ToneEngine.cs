@@ -9,6 +9,7 @@ namespace InvisiblePlayer.Core.Synthesis
     public class ActiveNote
     {
         public int NoteNumber { get; set; }   // MIDI číslo noty (např. 60 = C4)
+        public int Channel { get; set; }      // MIDI kanál 0..15 (v UI se zobrazuje 1..16)
         public double Frequency { get; set; } // Kmitočet v Hz (např. 261.63 Hz)
 
         // 'required': hlas musí být vždy přiřazen. Bez toho šlo o non-nullable
@@ -91,8 +92,11 @@ namespace InvisiblePlayer.Core.Synthesis
         // 1. REAKCE NA MIDI / KLÁVESNICI (Volá se při stisku a pustití klávesy)
         // =========================================================================
 
-        public void NoteOn(int noteNumber)
+        public void NoteOn(int noteNumber, int channel = 0)
         {
+            // Umlčený kanál notu vůbec nerozezní - hlas se ani nevytvoří.
+            if (IsChannelMuted(channel)) return;
+
             // Přepočet MIDI noty na frekvenci (A440 ladění + volitelná historická temperatura)
             double freq = 440.0 * Math.Pow(2.0, (noteNumber - 69) / 12.0)
                         * Math.Pow(2.0, _temperament.CentOffset(noteNumber) / 1200.0);
@@ -103,7 +107,9 @@ namespace InvisiblePlayer.Core.Synthesis
                 // doznělo předchozí spuštění), NEVYTVÁŘÍME druhou překrývající se instanci
                 // (ta způsobovala náhodné "přeladění" zvuku fázovým rušením). Místo toho
                 // jen znovu spustíme (retrigger) tu existující.
-                var existing = _activeBombardNotes.Find(n => n.NoteNumber == noteNumber);
+                // Shoda musí být na notě I KANÁLU - tentýž tón na dvou stopách MIDI
+                // souboru jsou dva nezávislé hlasy.
+                var existing = _activeBombardNotes.Find(n => n.NoteNumber == noteNumber && n.Channel == channel);
                 if (existing != null)
                 {
                     existing.Voice.NoteOn();
@@ -119,22 +125,63 @@ namespace InvisiblePlayer.Core.Synthesis
                 _activeBombardNotes.Add(new ActiveNote
                 {
                     NoteNumber = noteNumber,
+                    Channel = channel,
                     Frequency = freq,
                     Voice = voice
                 });
             }
         }
 
-        public void NoteOff(int noteNumber)
+        public void NoteOff(int noteNumber, int channel = 0)
         {
             lock (_lock)
             {
                 for (int i = 0; i < _activeBombardNotes.Count; i++)
                 {
-                    if (_activeBombardNotes[i].NoteNumber == noteNumber)
+                    if (_activeBombardNotes[i].NoteNumber == noteNumber
+                        && _activeBombardNotes[i].Channel == channel)
                     {
                         _activeBombardNotes[i].Voice?.NoteOff();
                     }
+                }
+            }
+        }
+
+        // =========================================================================
+        // 1b. MUTOVÁNÍ MIDI KANÁLŮ (nález S8)
+        // =========================================================================
+
+        // Bitová maska umlčených kanálů 0..15. Zapisuje UI vlákno, čte MIDI vlákno
+        // -> volatile kvůli viditelnosti. Int stačí, kanálů je 16.
+        private volatile int _mutedChannelMask;
+
+        /// <summary>Je kanál (0..15) umlčený?</summary>
+        public bool IsChannelMuted(int channel)
+        {
+            if ((uint)channel > 15) return false;
+            return (_mutedChannelMask & (1 << channel)) != 0;
+        }
+
+        /// <summary>
+        /// Umlčí nebo povolí MIDI kanál (0..15). Umlčení zároveň ukončí tóny,
+        /// které na daném kanálu právě znějí - jinak by mute zabral až u další noty
+        /// a u držených akordů by se tvářil, že nefunguje.
+        /// </summary>
+        public void SetChannelMuted(int channel, bool muted)
+        {
+            if ((uint)channel > 15) return;
+
+            int bit = 1 << channel;
+            if (muted) _mutedChannelMask |= bit;
+            else _mutedChannelMask &= ~bit;
+
+            if (!muted) return;
+
+            lock (_lock)
+            {
+                foreach (var note in _activeBombardNotes)
+                {
+                    if (note.Channel == channel) note.Voice.NoteOff();
                 }
             }
         }

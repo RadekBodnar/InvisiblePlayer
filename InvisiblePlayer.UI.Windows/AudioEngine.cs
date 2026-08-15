@@ -3,8 +3,13 @@ using InvisiblePlayer.Core.Generators;
 using InvisiblePlayer.Core.Synthesis;
 using NAudio.Wave;
 
-namespace InvisiblePlayer.Core.Output
-
+// PŘESUNUTO Z InvisiblePlayer.Core (rozhodnutí P7: projekt je Windows-only).
+// WaveOutEvent je obálka nad winmm.dll, tedy čistě Windows API. Dokud tahle
+// třída seděla v Core, tvrdil TFM 'net8.0', že je jádro přenositelné - a
+// publish pro linux-arm64 to potvrzoval tím, že vesele zabalil NAudio.WinMM.dll
+// do ARM64 výstupu. Spadlo by to až za běhu na cílovém zařízení.
+// Teď je platformní kód tam, kde platforma je.
+namespace InvisiblePlayer.UI.Windows
 {
     public class AudioEngine : IWaveProvider, IDisposable
     {
@@ -98,6 +103,7 @@ namespace InvisiblePlayer.Core.Output
         public void Dispose()
         {
             Stop();
+            GC.SuppressFinalize(this);
         }
     }
 }

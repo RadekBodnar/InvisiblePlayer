@@ -4,9 +4,11 @@ namespace InvisiblePlayer.Core.Generators
 {
     public abstract class SynthVoice
     {
-        protected readonly double SampleRate;
-        protected readonly AdsrEnvelope NoteEnvelope = new AdsrEnvelope();
-        protected bool HasStarted = false;
+        // Vlastnosti, ne pole (CA1051): odvozené třídy na ně sahají, takže jde
+        // o veřejnou plochu typu - a ta se do budoucna mění snáz u vlastnosti.
+        protected double SampleRate { get; }
+        protected AdsrEnvelope NoteEnvelope { get; } = new AdsrEnvelope();
+        protected bool HasStarted { get; private set; }
 
         // Konec tónu: Až po stisku (HasStarted) a doznění obálky (Idle)
         public bool IsFinished => HasStarted && !NoteEnvelope.IsActive;

@@ -11,13 +11,12 @@ namespace InvisiblePlayer.Core.Tests;
 public class SpectrumAnalysisTests
 {
     /// <summary>
-    /// Naformátuje číslo stejně, jako to udělá SpectrumAnalysis - tedy podle
-    /// AKTUÁLNÍ kultury. Bez toho by testy prošly jen tam, kde je desetinná
-    /// čárka stejná jako na stroji autora (v ČR ",", v invariantní kultuře ".").
-    /// Kulturně závislý výstup je záměr: je to text pro uživatele.
+    /// Naformátuje číslo stejně, jako to udělá SpectrumAnalysis - tedy
+    /// INVARIANTNĚ (desetinná tečka). Viz nález P12: hodnoty se přepisují
+    /// do VoicePreset v C# kódu, kde by "0,5000" neprošlo.
     /// </summary>
     private static string Num(double value, string format)
-        => value.ToString(format, CultureInfo.CurrentCulture);
+        => value.ToString(format, CultureInfo.InvariantCulture);
 
     /// <summary>Spektrum s píky na zadaných frekvencích (v dB), jinak podlaha.</summary>
     private static (double[] Freqs, double[] Db) MakeSpectrum(

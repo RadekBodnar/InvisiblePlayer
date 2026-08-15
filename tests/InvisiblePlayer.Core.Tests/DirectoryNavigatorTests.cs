@@ -1,4 +1,4 @@
-using InvisiblePlayer.Core;
+﻿using InvisiblePlayer.Core;
 
 namespace InvisiblePlayer.Core.Tests;
 
@@ -218,7 +218,7 @@ public sealed class DirectoryNavigatorTests : IDisposable
 
         string? next = nav.GetNextFile();
         Assert.Equal("03.mp3", Path.GetFileName(next!));
-        Assert.Contains("b-druha", next!);
+        Assert.Contains("b-druha", next!, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -257,7 +257,7 @@ public sealed class DirectoryNavigatorTests : IDisposable
             string? next = nav.GetNextFile();   // dřív zde letěla výjimka
 
             Assert.NotNull(next);
-            Assert.Contains("c-treti", next!);
+            Assert.Contains("c-treti", next!, StringComparison.Ordinal);
             if (!denialWorks)
             {
                 // Poznámka do výstupu: scénář nebyl plně reprodukován (běžíme jako
@@ -283,6 +283,6 @@ public sealed class DirectoryNavigatorTests : IDisposable
         nav.LoadDirectory(last);
 
         string? next = nav.GetNextFile();
-        Assert.Contains("c-treti", next!);
+        Assert.Contains("c-treti", next!, StringComparison.Ordinal);
     }
 }

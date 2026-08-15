@@ -337,8 +337,38 @@ namespace InvisiblePlayer.UI.Windows
                 case ConsoleKey.DownArrow:
                     ChangeVolume(-5);
                     break;
+
+                // Klávesy 1-9 a 0 = mutování MIDI kanálů 1-10 (nález S8).
+                // Dřív to legenda slibovala, ale žádný case tu nebyl a pole
+                // _channelMuted se nikdy nezapisovalo.
+                case ConsoleKey.D1: ToggleChannelMute(0); break;
+                case ConsoleKey.D2: ToggleChannelMute(1); break;
+                case ConsoleKey.D3: ToggleChannelMute(2); break;
+                case ConsoleKey.D4: ToggleChannelMute(3); break;
+                case ConsoleKey.D5: ToggleChannelMute(4); break;
+                case ConsoleKey.D6: ToggleChannelMute(5); break;
+                case ConsoleKey.D7: ToggleChannelMute(6); break;
+                case ConsoleKey.D8: ToggleChannelMute(7); break;
+                case ConsoleKey.D9: ToggleChannelMute(8); break;
+                case ConsoleKey.D0: ToggleChannelMute(9); break;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Přepne umlčení MIDI kanálu (index 0..15). Zdrojem pravdy je ToneEngine -
+        /// lokální pole _channelMuted je jen to, co se kreslí, aby se stav nedal
+        /// rozejít mezi tím, co uživatel vidí, a tím, co je slyšet.
+        /// </summary>
+        private static void ToggleChannelMute(int channel)
+        {
+            if ((uint)channel >= _channelMuted.Length) return;
+
+            var engine = App.OrganToneEngine;
+            if (engine == null) return;
+
+            engine.SetChannelMuted(channel, !engine.IsChannelMuted(channel));
+            _channelMuted[channel] = engine.IsChannelMuted(channel);
         }
 
         private static void RenderDashboard()
@@ -467,7 +497,7 @@ namespace InvisiblePlayer.UI.Windows
             if (!TrySetCursor(0, 7)) return;
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write(" Kanaly (mutovani zatim NEIMPLEMENTOVANO - viz TODO S8): ");
+            Console.Write(" Mute kanalu [1-9,0]: ");
             for (int i = 0; i < 10; i++)
             {
                 string label = (i == 9) ? "Ch10[DRUM]" : $"Ch{i + 1:D2}";
