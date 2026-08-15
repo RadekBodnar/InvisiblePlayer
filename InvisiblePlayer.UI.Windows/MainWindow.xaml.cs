@@ -168,16 +168,16 @@ namespace InvisiblePlayer.UI.Windows
                     e.Handled = true;
                     break;
 
-                // Přeskakování souborů
+                // Přeskakování souborů. Návratovou hodnotu je nutné kontrolovat:
+                // null znamená "další/předchozí soubor není" (nález S6). Bez toho
+                // by se na konci složky znovu spustil tentýž soubor od začátku.
                 case Key.PageDown:
-                    _navigator.GetNextFile();
-                    StartPlayingCurrentFile();
+                    if (_navigator.GetNextFile() != null) StartPlayingCurrentFile();
                     e.Handled = true;
                     break;
 
                 case Key.PageUp:
-                    _navigator.GetPreviousFile();
-                    StartPlayingCurrentFile();
+                    if (_navigator.GetPreviousFile() != null) StartPlayingCurrentFile();
                     e.Handled = true;
                     break;
             }

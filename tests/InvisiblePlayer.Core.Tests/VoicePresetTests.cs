@@ -46,6 +46,27 @@ public class VoicePresetTests
         }
     }
 
+    /// <summary>
+    /// Regresní test k S3: dva presety se hlásily ke stejnému číslu rejstříku 85
+    /// (_001_Bombard16Preset měl zděděné Name = "Aeolus" a Number = 85).
+    /// Číslo rejstříku odpovídá fyzické klapce na hracím stole, takže duplicita
+    /// znamená, že jedna z nich je nedosažitelná.
+    /// </summary>
+    [Fact]
+    public void CislaRejstriku_JsouJedinecna()
+    {
+        var duplicates = VsechnyPresety()
+            .Select(row => ((string)row[0], (VoicePreset)row[1]))
+            .Where(t => t.Item2.Number >= 0)
+            .GroupBy(t => t.Item2.Number)
+            .Where(g => g.Count() > 1)
+            .Select(g => $"číslo {g.Key}: {string.Join(", ", g.Select(t => t.Item1))}")
+            .ToList();
+
+        Assert.True(duplicates.Count == 0,
+            "Kolize čísel rejstříků: " + string.Join(" | ", duplicates));
+    }
+
     [Theory]
     [MemberData(nameof(VsechnyPresety))]
     public void KazdyPreset_MaKladneParametryChiffFiltru(string name, VoicePreset preset)

@@ -139,19 +139,23 @@ public sealed class DirectoryNavigatorTests : IDisposable
         var nav = new DirectoryNavigator();
         nav.LoadDirectory(target);
 
-        // Po jediném podporovaném souboru není kam jít -> zůstaneme na něm.
+        // Jediný podporovaný soubor: zůstaneme na něm, ale "další" už není (S6).
         Assert.Equal(target, nav.CurrentFile);
-        Assert.Equal(target, nav.GetNextFile());
+        Assert.Null(nav.GetNextFile());
+        Assert.Equal(target, nav.CurrentFile);
     }
 
     /// <summary>
-    /// CHARAKTERIZAČNÍ TEST ke známé vadě S6 (viz TODO.md).
-    /// Na konci playlistu vrací GetNextFile() TENTÝŽ soubor místo null, což ve
-    /// VgaEngine vede k donekonečna se opakující poslední skladbě.
-    /// AŽ SE S6 ROZHODNE A OPRAVÍ, tenhle test začne padat - to je záměr.
+    /// OPRAVA S6: na konci playlistu musí GetNextFile() vrátit null, ne tentýž
+    /// soubor. Dřív ho vracel, VgaEngine to bral jako novou skladbu, znovu ji
+    /// načetl a přehrál — poslední skladba se opakovala donekonečna.
+    ///
+    /// Pozice přitom zůstává na posledním souboru, aby PageUp fungoval dál.
+    /// (Tento test vznikl jako charakterizační pro tehdejší vadné chování;
+    /// po rozhodnutí a opravě byl přepsán — přesně proto tam byl.)
     /// </summary>
     [Fact]
-    public void ZNAMA_VADA_S6_NaKonciSlozky_VraciTentyzSoubor()
+    public void GetNextFile_NaKonciPlaylistu_VraciNull_APoziciNechava()
     {
         MakeFile("01.mp3");
         string last = MakeFile("02.mp3");
@@ -159,8 +163,26 @@ public sealed class DirectoryNavigatorTests : IDisposable
         var nav = new DirectoryNavigator();
         nav.LoadDirectory(last);
 
-        Assert.Equal(last, nav.GetNextFile());
-        Assert.Equal(last, nav.GetNextFile());
+        Assert.Null(nav.GetNextFile());
+        Assert.Null(nav.GetNextFile());
+
+        // Pozice se nesmí posunout ani "zabalit" — jsme pořád na posledním.
+        Assert.Equal(last, nav.CurrentFile);
+        Assert.Equal("01.mp3", Path.GetFileName(nav.GetPreviousFile()!));
+    }
+
+    [Fact]
+    public void GetPreviousFile_NaZacatkuPlaylistu_VraciNull_APoziciNechava()
+    {
+        string first = MakeFile("01.mp3");
+        MakeFile("02.mp3");
+
+        var nav = new DirectoryNavigator();
+        nav.LoadDirectory(first);
+
+        Assert.Null(nav.GetPreviousFile());
+        Assert.Equal(first, nav.CurrentFile);
+        Assert.Equal("02.mp3", Path.GetFileName(nav.GetNextFile()!));
     }
 
     [Fact]

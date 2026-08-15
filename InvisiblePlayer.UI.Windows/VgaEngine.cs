@@ -176,10 +176,24 @@ namespace InvisiblePlayer.UI.Windows
                 {
                     if (_audioPlayer.CurrentTime >= _audioPlayer.TotalTime - TimeSpan.FromMilliseconds(300))
                     {
-                        _navigator.GetNextFile();
-                        UpdateFileTypeState();
-                        Console.Clear();
-                        RenderDashboard();
+                        // ZDE SE ROZHODUJE POLITIKA KONCE PLAYLISTU (nález S6).
+                        // GetNextFile() nově vrací null, když další soubor není -
+                        // dřív vracel tentýž a poslední skladba se opakovala
+                        // donekonečna. Zvolené chování: přehrávání skončí.
+                        // Pro zacyklení celého playlistu by tu stačilo místo
+                        // pauzy zavolat _navigator.LoadDirectory(prvníSoubor).
+                        if (_navigator.GetNextFile() != null)
+                        {
+                            UpdateFileTypeState();
+                            Console.Clear();
+                            RenderDashboard();
+                        }
+                        else
+                        {
+                            _audioPlayer.Pause();
+                            _isPaused = true;
+                            RenderDashboard();
+                        }
                     }
                 }
 

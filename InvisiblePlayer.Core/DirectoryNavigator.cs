@@ -39,6 +39,21 @@ namespace InvisiblePlayer.Core
                 f => string.Equals(f, initialFilePath, StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <summary>
+        /// Posune se na následující soubor a vrátí ho.
+        /// Vrací <c>null</c>, pokud další soubor NENÍ - pozice pak zůstane
+        /// na stávajícím souboru (<see cref="CurrentFile"/> se nemění).
+        /// </summary>
+        /// <remarks>
+        /// OPRAVA S6: dřív se v koncové situaci index vrátil na poslední položku
+        /// a metoda vrátila TENTÝŽ soubor, jaký už hrál. Volající tak nemohl
+        /// odlišit "další skladba" od "už žádná není" - VgaEngine tuhle hodnotu
+        /// bral jako novou skladbu, znovu ji načetl a přehrál, a poslední skladba
+        /// ve složce se opakovala donekonečna.
+        ///
+        /// Metoda teď hlásí jen FAKT (další není). Politiku - skončit, nebo
+        /// zacyklit playlist - si určuje volající; je to u něj jedna větev navíc.
+        /// </remarks>
         public string? GetNextFile()
         {
             if (_playlist.Count == 0) return null;
@@ -55,13 +70,19 @@ namespace InvisiblePlayer.Core
                 }
                 else
                 {
-                    _currentIndex = _playlist.Count - 1; // Zůstaneme na posledním
+                    _currentIndex = _playlist.Count - 1; // Zůstáváme na posledním
+                    return null;                         // ...ale hlásíme "další není"
                 }
             }
 
             return CurrentFile;
         }
 
+        /// <summary>
+        /// Posune se na předchozí soubor a vrátí ho.
+        /// Vrací <c>null</c>, pokud předchozí soubor NENÍ - pozice pak zůstane
+        /// na stávajícím souboru. Viz poznámka u <see cref="GetNextFile"/>.
+        /// </summary>
         public string? GetPreviousFile()
         {
             if (_playlist.Count == 0) return null;
@@ -78,7 +99,8 @@ namespace InvisiblePlayer.Core
                 }
                 else
                 {
-                    _currentIndex = 0; // Zůstaneme na prvním
+                    _currentIndex = 0;   // Zůstáváme na prvním
+                    return null;         // ...ale hlásíme "předchozí není"
                 }
             }
 
