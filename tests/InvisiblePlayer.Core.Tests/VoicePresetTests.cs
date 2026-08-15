@@ -65,10 +65,11 @@ public class SynthVoiceTests
     [InlineData(typeof(BellVoice))]
     public void VsechnyHlasy_ProduujiKonecneVzorky(Type voiceType)
     {
-        // Tyhle tři třídy jsou zatím mrtvý kód (nález S2 - ToneEngine je
-        // nevytváří), ale otestované být mají: až se zapojí factory podle
-        // InstrumentType, chceme vědět, že fungují.
-        var voice = (SynthVoice)Activator.CreateInstance(voiceType, 44100.0)!;
+        // Oba argumenty musí být uvedené explicitně: Activator.CreateInstance
+        // volitelné parametry sám nedoplňuje (chtělo by to BindingFlags
+        // .OptionalParamBinding), takže po přidání 'int? noiseSeed' přestal
+        // konstruktor odpovídat jednoargumentovému volání.
+        var voice = (SynthVoice)Activator.CreateInstance(voiceType, 44100.0, (int?)null)!;
         voice.NoteOn();
 
         for (int i = 0; i < 44100; i++)
@@ -77,6 +78,59 @@ public class SynthVoiceTests
             Assert.False(double.IsNaN(s), $"{voiceType.Name}: NaN ve vzorku {i}");
             Assert.False(double.IsInfinity(s), $"{voiceType.Name}: Infinity ve vzorku {i}");
         }
+    }
+
+    /// <summary>
+    /// Regresní testy k S2: factory v ToneEngine musí VoicePreset.Instrument
+    /// skutečně číst. Dřív se pole nastavovalo, ale nikde nevyhodnocovalo -
+    /// NoteOn vždy vytvořil OrganVoice a Piano/Cembalo/Bell byly nedosažitelné.
+    ///
+    /// Testujeme přes pozorovatelné chování, ne přes typ hlasu (ten je privátní):
+    /// jednotlivé nástroje mají výrazně odlišné obálky, takže se liší i doznění.
+    /// </summary>
+    [Theory]
+    [InlineData(InstrumentType.Organ)]
+    [InlineData(InstrumentType.Piano)]
+    [InlineData(InstrumentType.Cembalo)]
+    [InlineData(InstrumentType.Bell)]
+    public void ToneEngine_RespektujePresetInstrument(InstrumentType instrument)
+    {
+        var engine = new InvisiblePlayer.Core.ToneEngine.ToneEngine(44100.0, null, noiseSeed: 1)
+        {
+            CurrentPreset = new VoicePreset { Instrument = instrument },
+        };
+
+        engine.NoteOn(60);
+        var samples = new double[8192];
+        for (int i = 0; i < samples.Length; i++) samples[i] = engine.GenerateNextMixSample();
+
+        Assert.All(samples, s => Assert.False(double.IsNaN(s) || double.IsInfinity(s)));
+        Assert.True(samples.Any(s => Math.Abs(s) > 0.001),
+            $"{instrument}: hlas nevydal žádný slyšitelný signál.");
+    }
+
+    [Fact]
+    public void ToneEngine_RuzneNastroje_ZniRuzne()
+    {
+        // Kdyby factory Instrument ignorovala (stav před S2), byly by všechny
+        // průběhy identické.
+        static double[] RenderWith(InstrumentType instrument)
+        {
+            var engine = new InvisiblePlayer.Core.ToneEngine.ToneEngine(44100.0, null, noiseSeed: 1)
+            {
+                CurrentPreset = new VoicePreset { Instrument = instrument },
+            };
+            engine.NoteOn(60);
+            var s = new double[8192];
+            for (int i = 0; i < s.Length; i++) s[i] = engine.GenerateNextMixSample();
+            return s;
+        }
+
+        double[] organ = RenderWith(InstrumentType.Organ);
+
+        Assert.NotEqual(organ, RenderWith(InstrumentType.Piano));
+        Assert.NotEqual(organ, RenderWith(InstrumentType.Cembalo));
+        Assert.NotEqual(organ, RenderWith(InstrumentType.Bell));
     }
 
     [Fact]

@@ -14,7 +14,10 @@ namespace InvisiblePlayer.Core.ToneEngine
         // 'required': hlas musí být vždy přiřazen. Bez toho šlo o non-nullable
         // vlastnost bez inicializátoru (CS8618) - anotace slibovala "nikdy null",
         // ale nic to nevynucovalo. Volající (NoteOn) ho stejně vždy nastavuje.
-        public required OrganVoice Voice { get; set; }
+        //
+        // Typ je SynthVoice, ne OrganVoice: hlas vybírá factory podle
+        // VoicePreset.Instrument, takže tu může být i Piano/Cembalo/Bell.
+        public required SynthVoice Voice { get; set; }
     }
 
 
@@ -51,11 +54,38 @@ namespace InvisiblePlayer.Core.ToneEngine
         // Zapisuje audio vlákno, čte UI vlákno -> volatile kvůli viditelnosti.
         private volatile bool _clipSinceLastRead;
 
-        public ToneEngine(double sampleRate = 44100.0, Temperament? temperament = null)
+        // Semínko šumu pro všechny vytvářené hlasy. null = běžný provoz.
+        // Konkrétní hodnota dělá výstup enginu reprodukovatelným (charakterizační testy).
+        private readonly int? _noiseSeed;
+
+        /// <summary>
+        /// Preset, ze kterého se vytvářejí nové hlasy. Určuje i to, KTERÝ generátor
+        /// se použije (viz VoicePreset.Instrument a CreateVoice).
+        ///
+        /// Dřív byl preset zadrátovaný přímo v NoteOn, takže se vždy vytvořil
+        /// OrganVoice s Bombardem - a PianoVoice / CembaloVoice / BellVoice byly
+        /// nedosažitelný kód.
+        /// </summary>
+        public VoicePreset CurrentPreset { get; set; } = _001_Bombard16Preset.Preset;
+
+        public ToneEngine(double sampleRate = 44100.0, Temperament? temperament = null, int? noiseSeed = null)
         {
             _sampleRate = sampleRate;
             _temperament = temperament ?? new Temperament(); // default = rovnoměrná (samé nuly = beze změny chování)
+            _noiseSeed = noiseSeed;
         }
+
+        /// <summary>
+        /// Vybere zvukový generátor podle presetu. Tohle je ten chybějící článek,
+        /// kvůli kterému se pole VoicePreset.Instrument nastavovalo, ale nikde nečetlo.
+        /// </summary>
+        private SynthVoice CreateVoice(VoicePreset preset) => preset.Instrument switch
+        {
+            InstrumentType.Piano => new PianoVoice(_sampleRate, _noiseSeed),
+            InstrumentType.Cembalo => new CembaloVoice(_sampleRate, _noiseSeed),
+            InstrumentType.Bell => new BellVoice(preset, _sampleRate, _noiseSeed),
+            _ => new OrganVoice(preset, _sampleRate, _noiseSeed),
+        };
 
         // =========================================================================
         // 1. REAKCE NA MIDI / KLÁVESNICI (Volá se při stisku a pustití klávesy)
@@ -81,8 +111,9 @@ namespace InvisiblePlayer.Core.ToneEngine
                     return;
                 }
 
-                // Vytvoříme nový hlas pro tento tón načtením presetu Bombard 16'
-                var voice = new OrganVoice(_001_Bombard16Preset.Preset, _sampleRate);
+                // Vytvoříme nový hlas podle aktuálního presetu. Typ generátoru
+                // (varhany / klavír / cembalo / zvon) vybírá CreateVoice.
+                var voice = CreateVoice(CurrentPreset);
                 voice.NoteOn();
 
                 _activeBombardNotes.Add(new ActiveNote

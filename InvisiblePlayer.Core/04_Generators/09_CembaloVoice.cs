@@ -22,12 +22,14 @@ namespace InvisiblePlayer.Core.Generators
 
         // Pluck (brnknutí) - krátký ostrý šumový impuls
         private double _pluckEnvelope = 1.0;
-        private readonly NoiseGenerator _pluckNoise = new NoiseGenerator();
+        private readonly NoiseGenerator _pluckNoise;
         private readonly BandPassFilter _pluckFilter = new BandPassFilter();
         private const double PluckDurationSec = 0.004; // 4 ms - ostřejší než klavírní kladívko
 
-        public CembaloVoice(double sampleRate) : base(sampleRate)
+        public CembaloVoice(double sampleRate, int? noiseSeed = null) : base(sampleRate)
         {
+            _pluckNoise = new NoiseGenerator(noiseSeed);
+
             NoteEnvelope.AttackTime = 0.001f;  // Prakticky okamžitý náběh
             NoteEnvelope.DecayTime = 0.9f;
             NoteEnvelope.SustainLevel = 0.0f;  // Cembalo nemá sustain - struna jen doznívá

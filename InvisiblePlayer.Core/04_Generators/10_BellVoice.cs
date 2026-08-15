@@ -53,7 +53,7 @@ namespace InvisiblePlayer.Core.Generators
         private readonly double _modDepth;
         private readonly bool _modEnabled;
 
-        public BellVoice(double sampleRate) : base(sampleRate)
+        public BellVoice(double sampleRate, int? noiseSeed = null) : base(sampleRate)
         {
             NoteEnvelope.AttackTime = 0.002f;   // Okamžitý úder srdce o plášť
             NoteEnvelope.DecayTime = 3.0f;
@@ -65,7 +65,7 @@ namespace InvisiblePlayer.Core.Generators
 
         // Nový konstruktor - volitelný, s presetem. Umožňuje řídit FM wobble
         // (ModType == FM) z VoicePreset, např. pro "nakřáplý" rejstřík č. 85.
-        public BellVoice(VoicePreset preset, double sampleRate) : this(sampleRate)
+        public BellVoice(VoicePreset preset, double sampleRate, int? noiseSeed = null) : this(sampleRate, noiseSeed)
         {
             if (preset != null && preset.ModType == ModulationType.FM)
             {

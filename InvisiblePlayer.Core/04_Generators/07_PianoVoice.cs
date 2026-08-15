@@ -21,12 +21,14 @@ namespace InvisiblePlayer.Core.Generators
 
         // Šum kladívka (podobný principu jako "chiff" u varhan)
         private double _hammerEnvelope = 1.0;
-        private readonly NoiseGenerator _hammerNoise = new NoiseGenerator();
+        private readonly NoiseGenerator _hammerNoise;
         private readonly BandPassFilter _hammerFilter = new BandPassFilter();
         private const double HammerDurationSec = 0.008; // 8 ms - velmi krátký "cvak"
 
-        public PianoVoice(double sampleRate) : base(sampleRate)
+        public PianoVoice(double sampleRate, int? noiseSeed = null) : base(sampleRate)
         {
+            _hammerNoise = new NoiseGenerator(noiseSeed);
+
             // Klasická klavírní obálka: rychlý úder, plynulý pokles, nízký sustain
             NoteEnvelope.AttackTime = 0.003f;
             NoteEnvelope.DecayTime = 1.4f;

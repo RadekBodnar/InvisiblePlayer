@@ -11,12 +11,17 @@ namespace InvisiblePlayer.Core.Generators
         private readonly VoicePreset _preset;
         private double[] _phases;
         private double _chiffEnvelope = 1.0;
-        private readonly NoiseGenerator _noiseGen = new NoiseGenerator();
+        private readonly NoiseGenerator _noiseGen;
         private readonly BandPassFilter _chiffFilter = new BandPassFilter();
 
-        public OrganVoice(VoicePreset preset, double sampleRate) : base(sampleRate)
+        /// <param name="noiseSeed">
+        /// Semínko pro šum chiffu. null = běžný nepředvídatelný provoz,
+        /// konkrétní hodnota = reprodukovatelný výstup pro testy.
+        /// </param>
+        public OrganVoice(VoicePreset preset, double sampleRate, int? noiseSeed = null) : base(sampleRate)
         {
             _preset = preset;
+            _noiseGen = new NoiseGenerator(noiseSeed);
             _phases = new double[_preset.Harmonics.Length];
 
             // VARHANNÍ OBÁLKA:
