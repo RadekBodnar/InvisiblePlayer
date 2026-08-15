@@ -1,4 +1,4 @@
-# TODO — InvisiblePlayer
+﻿# TODO — InvisiblePlayer
 
 Pouze **otevřené** problémy. Vyřešené jsou v `RESOLVED.md` s datem a hashem commitu.
 Zdroj: `CODE_REVIEW_2026-08-15.md`.
@@ -7,7 +7,8 @@ Legenda: 🔴 Blocker · 🟠 Major · 🟡 Medium · 🔵 Low
 
 > **Stav ověření (2026-08-15):** .NET SDK 8.0.424 (`~/.dotnet`, bez sudo).
 > Build: `dotnet build <projekt>.csproj --artifacts-path ~/build/InvisiblePlayer`
-> Testy: `dotnet test tests/InvisiblePlayer.Core.Tests/…` — **95 testů, 0 selhání**.
+> Testy: `dotnet test tests/InvisiblePlayer.Core.Tests/…` — **114 testů, 0 selhání**.
+> Hooky: `./scripts/install-hooks.sh` (na čerstvém klonu nutné ručně).
 > WPF projekty se na Linuxu překládají (`EnableWindowsTargeting`), spustit je nelze.
 > `.slnx` SDK 8 neumí (`MSB4068`) — stavět je nutné po projektech.
 
@@ -66,9 +67,6 @@ Legenda: 🔴 Blocker · 🟠 Major · 🟡 Medium · 🔵 Low
 
 - [ ] **P3** 🔵 — migrace `net8.0` → `net10.0` (podpora .NET 8 končí 11/2026).
   Vyřešilo by i `.slnx` (SDK 8 formát neumí).
-- [ ] **P4** 🟡 — založit `CLAUDE.md` (konvence projektu) a `FEATURES.md`
-  (registr funkcí se sloupcem `Tests` — teď už je na co odkazovat, 95 testů).
-  Pre-commit hook: **celá** sada testů, fail-closed, nikdy podmnožina.
 - [ ] **P5** 🔵 — commit messages: 12 z 18 původních commitů má zprávu `rr`/`e`/`d`/`ee`,
   jeden je prázdný. Historie je nepoužitelná pro `git bisect`.
 - [ ] **P7** 🟡 — rozhodnout hranici Core/platforma: `Audio.cs` používá `WaveOutEvent`
