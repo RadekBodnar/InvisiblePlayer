@@ -91,11 +91,6 @@ namespace InvisiblePlayer.UI.Windows
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[{evt.Source}] {evt.Type} | Nota: {evt.Note.Number} ({evt.Note.FrequencyHz:F1} Hz)");
-
-                if (evt.Type == InputEventType.NoteOn && evt.Velocity > 0)
-                    _toneEngine?.NoteOn(evt.Note.Number);
-                else
-                    _toneEngine?.NoteOff(evt.Note.Number);
             };
 
             // Spustíme odchytávání z piana na pozadí
