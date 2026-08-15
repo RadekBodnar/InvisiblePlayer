@@ -22,13 +22,21 @@ namespace InvisiblePlayer.Core
             string? folder = Path.GetDirectoryName(initialFilePath);
             if (folder == null) return;
 
-            // Načteme všechny podporované soubory v aktuální složce
+            // Načteme všechny podporované soubory v aktuální složce.
+            // StringComparer.Ordinal, ne výchozí OrderBy - to řadí podle AKTUÁLNÍ
+            // KULTURY, takže v češtině by "ch" skončilo až za "h" a pořadí playlistu
+            // by záviselo na nastavení systému.
             _playlist = Directory.GetFiles(folder)
                 .Where(f => IsSupportedExtension(f))
-                .OrderBy(f => f)
+                .OrderBy(f => f, StringComparer.Ordinal)
                 .ToList();
 
-            _currentIndex = _playlist.IndexOf(initialFilePath);
+            // IndexOf porovnává case-sensitive, ale Windows FS je case-insensitive:
+            // cesta z příkazové řádky ("C:\hudba\SONG.MP3") se nemusí trefit do toho,
+            // co vrátil Directory.GetFiles ("...\Song.mp3") -> -1 -> CurrentFile == null
+            // -> přehrávání tiše nezačne.
+            _currentIndex = _playlist.FindIndex(
+                f => string.Equals(f, initialFilePath, StringComparison.OrdinalIgnoreCase));
         }
 
         public string? GetNextFile()
@@ -89,7 +97,7 @@ namespace InvisiblePlayer.Core
 
             // Seznam všech podsložek v nadřazeném adresáři
             var subFolders = parentDir.GetDirectories()
-                .OrderBy(d => d.FullName)
+                .OrderBy(d => d.FullName, StringComparer.Ordinal)
                 .ToList();
 
             int currentFolderIndex = subFolders.FindIndex(d => d.FullName.Equals(currentFolder, StringComparison.OrdinalIgnoreCase));
@@ -103,7 +111,7 @@ namespace InvisiblePlayer.Core
                 var targetFolder = subFolders[targetFolderIndex];
                 var filesInTarget = Directory.GetFiles(targetFolder.FullName)
                     .Where(f => IsSupportedExtension(f))
-                    .OrderBy(f => f)
+                    .OrderBy(f => f, StringComparer.Ordinal)
                     .ToList();
 
                 if (filesInTarget.Count > 0)

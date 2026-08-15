@@ -29,8 +29,13 @@
         // "zadrátovaný" přímo ve třídě (PianoVoice, CembaloVoice, BellVoice).
         public InstrumentType Instrument { get; set; } = InstrumentType.Organ;
 
-        // Tabulka alikvót: (poměr frekvence, hlasitost)
+        // Tabulka alikvót: (poměr frekvence, hlasitost).
+        // Výchozí hodnota (čistý základní tón) je nutná: pole je non-nullable, ale
+        // presety Piano/Cembalo/Bell ho nenastavují (zvuk mají zadrátovaný ve své
+        // třídě). Bez inicializátoru zůstalo null a OrganVoice na něm padal
+        // v konstruktoru na _preset.Harmonics.Length -> NullReferenceException.
         public (double FrequencyMultiplier, double Amplitude)[] Harmonics { get; set; }
+            = new (double FrequencyMultiplier, double Amplitude)[] { (1.0, 1.0) };
 
         // Parametry Šumu / Chiffu / Úderu
         public double ChiffNoiseGain { get; set; } = 0.2;

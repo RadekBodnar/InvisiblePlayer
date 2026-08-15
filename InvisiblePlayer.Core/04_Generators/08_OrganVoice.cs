@@ -1,5 +1,4 @@
 ﻿using InvisiblePlayer.Core.Filters;
-using NAudio.SoundFont;
 using System;
 
 namespace InvisiblePlayer.Core.Generators
@@ -41,7 +40,6 @@ namespace InvisiblePlayer.Core.Generators
             double organSound = 0;
             for (int i = 0; i < _preset.Harmonics.Length; i++)
             {
-                double harmonicFreq = frequency * _preset.Harmonics[i].FrequencyMultiplier;
                 double phase = AdvancePhase(ref _phases[i], _preset.Harmonics[i].FrequencyMultiplier, frequency);
                 organSound += Math.Sin(phase * 2.0 * Math.PI) * _preset.Harmonics[i].Amplitude;
             }

@@ -77,16 +77,29 @@ namespace InvisiblePlayer.Core.Input
             }
         }
 
+        /// <summary>
+        /// Chyba při přehrávání MIDI souboru (poškozený/nepodporovaný soubor).
+        /// Volající, který Task nečeká (fire-and-forget), se o problému jinak nedozví.
+        /// </summary>
+        public event Action<string, Exception>? OnPlaybackError;
+
         public async Task PlayMidiFileAsync(string filePath)
         {
-            if (!File.Exists(filePath)) return;
+            if (!File.Exists(filePath))
+            {
+                OnPlaybackError?.Invoke(filePath, new FileNotFoundException("Soubor neexistuje.", filePath));
+                return;
+            }
 
             StopFilePlayback();
             _filePlaybackCts = new CancellationTokenSource();
             var token = _filePlaybackCts.Token;
 
-            await Task.Run(() =>
+            try
             {
+                await Task.Run(() =>
+                {
+                // MidiFile.Read vyhodí na poškozeném nebo nepodporovaném souboru.
                 var midiFile = MidiFile.Read(filePath);
 
                 using var playback = new Playback(midiFile.GetTimedEvents(), midiFile.GetTempoMap());
@@ -106,6 +119,9 @@ namespace InvisiblePlayer.Core.Input
 
                 playback.Start();
 
+                // Task.Delay místo Thread.Sleep by tady byl hezčí, ale Playback je
+                // synchronní API a smyčka drží jeho lifetime (using) - blokující
+                // čekání je tu záměrné, proto Task.Run a ne async smyčka.
                 while (playback.IsRunning)
                 {
                     if (token.IsCancellationRequested)
@@ -115,7 +131,18 @@ namespace InvisiblePlayer.Core.Input
                     }
                     Thread.Sleep(10);
                 }
-            }, token);
+                }, token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Zastavení přes StopFilePlayback() - očekávaný konec, ne chyba.
+            }
+            catch (Exception ex)
+            {
+                // Bez tohoto zmizela výjimka v neawaitovaném Tasku a aplikace
+                // jen tiše nehrála (App.xaml.cs volá metodu jako "_ = ...").
+                OnPlaybackError?.Invoke(filePath, ex);
+            }
         }
 
         public void StopFilePlayback()

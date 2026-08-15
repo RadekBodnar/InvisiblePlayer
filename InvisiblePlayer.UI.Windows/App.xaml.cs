@@ -93,6 +93,13 @@ namespace InvisiblePlayer.UI.Windows
                 System.Diagnostics.Debug.WriteLine($"[{evt.Source}] {evt.Type} | Nota: {evt.Note.Number} ({evt.Note.FrequencyHz:F1} Hz)");
             };
 
+            // MIDI soubor se přehrává fire-and-forget (viz MediaLauncher.Launch),
+            // takže bez tohoto handleru by chyba čtení souboru zmizela beze stopy.
+            _inputManager.OnPlaybackError += (path, ex) =>
+                Dispatcher.InvokeAsync(() => MessageBox.Show(
+                    $"Nelze přehrát MIDI soubor:\n{path}\n\n{ex.GetBaseException().Message}",
+                    "InvisiblePlayer"));
+
             // Spustíme odchytávání z piana na pozadí
             _inputManager.StartLiveDevice("USB MIDI"); // nebo název tvého Casia
 
