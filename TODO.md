@@ -35,13 +35,6 @@ Legenda: 🔴 Blocker · 🟠 Major · 🟡 Medium · 🔵 Low
 
 ## 🟡 Medium
 
-- [ ] **S5** — `Core/04_Generators/06_SynthVoice.cs:12` — hlas se `SustainLevel = 0`
-  uvázne ve stavu `Sustain` s úrovní 0; `IsFinished` zůstane `false` → němé hlasy
-  se nemažou a přes `voiceCount` tlumí znějící tóny.
-  ✅ Zachyceno charakterizačním testem `ZNAMA_VADA_S5_SustainNula_UvizneVeStavuSustain`
-  — po opravě začne padat, to je záměr.
-  **Nově aktuální:** po zapojení factory (S2) už `CembaloVoice`/`BellVoice`
-  vznikají, takže vada přestala být latentní.
 
 - [ ] **S8** — `UI.Windows/VgaEngine.cs` — mutování MIDI kanálů neexistuje.
   Legenda už nelže (opraveno), ale `_channelMuted` se pořád nikde nezapisuje
@@ -50,11 +43,6 @@ Legenda: 🔴 Blocker · 🟠 Major · 🟡 Medium · 🔵 Low
   v `ToneEngine` (dnes se `ConsoleInputEvent.Channel` zahazuje), tedy funkci,
   ne opravu.
 
-- [ ] **S9** — `Analyzer/MainWindow.xaml.cs` — nekompenzovaný koherentní zisk
-  Hannova okna (0,5) → absolutní dBFS o ~6 dB nižší. Relativní odečty jsou OK.
-  Floor `1e-4` (−80 dB) navíc nesedí s osou grafu do −90 dB.
-  ⚠️ Než z analyzátoru vzniknou další presety, ověřit ho proti generovanému sinu
-  o známé amplitudě.
 
 ## 🔵 Low
 
@@ -76,9 +64,10 @@ Legenda: 🔴 Blocker · 🟠 Major · 🟡 Medium · 🔵 Low
 - [ ] **P8** 🔵 — `NU1701`: `ScottPlot.WPF` táhne tranzitivně `SkiaSharp.Views.WPF`
   bez `net8.0-windows` assetů (restore přes .NET Framework fallback). Zatím tlumeno
   v `Directory.Build.props`; prověřit při upgradu ScottPlotu.
-- [ ] **P11** 🔵 🆕 — pokrytí testy zatím nemá `InputManager` (vyžaduje MIDI
-  zařízení nebo testovací soubor), `AudioEngine`/`AudioPlayer` (vyžadují zvukovou
-  kartu) a celý `Analyzer`. Zvážit vyčlenění čisté FFT/analytické logiky
-  z `MainWindow.xaml.cs` do testovatelné třídy — `AnalyzeOrganSubAndHarmonics`,
-  `AnalyzeBellPikes`, `AnalyzeNoiseShape` a `FindAllPikes` jsou čisté funkce
-  uvězněné v code-behind.
+- [ ] **P13** 🔵 — bez testů zůstávají `InputManager` (vyžaduje MIDI zařízení nebo
+  testovací soubor), `AudioEngine` / `AudioPlayer` (vyžadují zvukovou kartu) a UI
+  vrstva `Analyzeru`. Čistá analytika už testovatelná je — viz `SpectrumAnalysis`.
+- [ ] **P12** 🔵 🆕 — analyzátor formátuje čísla podle aktuální kultury (v ČR
+  desetinná čárka), ale slouží k odečítání hodnot přepisovaných do C# presetů,
+  kde `0,5000` neprojde. Zvážit invariantní formátování numerických výstupů.
+  **Produktové rozhodnutí, ne vada.**

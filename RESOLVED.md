@@ -64,7 +64,12 @@ SDK 8.0.424 doinstalováno až v průběhu, poté vše ověřeno sestavením a t
 | **L4** | *tento commit* | `MainWindow_KeyDown` měl dvě mrtvé větve podmínky (`Key.Return && Alt` pohlceno `Key.Return`, `Key.F && Ctrl` pohlceno `Key.F`) — `isAltPressed` tím pádem nebyla použitá. |
 | **L6** | *tento commit* | `Mcp23016Controller.Dispose` měl mrtvý `?.` na non-nullable readonly poli a chyběl guard proti dvojímu Dispose + `GC.SuppressFinalize`. |
 | **P6** | *tento commit* | Odstraněn zbytečný `<Folder Include="bin\" />` z `Core.csproj`. |
-| **P10** | *tento commit* | 8 testů pro `LowPassFilter` (konvergence impulsní odezvy, hodnoty mimo rozsah, potlačení výšek, `Reset`, přepočet při změně vzorkovací frekvence). Celkem **95 testů**. |
+| **P10** | `cc42a6e` | 8 testů pro `LowPassFilter` (konvergence impulsní odezvy, hodnoty mimo rozsah, potlačení výšek, `Reset`, přepočet při změně vzorkovací frekvence). Celkem **95 testů**. |
+| **S5** | `b39d219` | Obálka se `SustainLevel = 0` uvázla ve stavu `Sustain` na nulové úrovni: němá, ale `IsActive` hlásilo `true`, takže `IsFinished` zůstalo `false` a `ToneEngine` hlas nikdy neuklidil. Němé hlasy se hromadily a přes `voiceCount` tlumily kompenzací `1/√N` tóny, které skutečně zněly. Do zavedení factory (S2) latentní — pak se stalo aktuálním. Regresní test přes **důsledek**: po deseti doznělých cembalových notách má jedenáctá stejnou amplitudu jako sólový tón. |
+| **S9** | `e127d57` | Absolutní dBFS bylo o ~6 dB nižší — nekompenzoval se koherentní zisk Hannova okna (0,5). Relativní odečty byly v pořádku, ale údaj „DOMINANTA = … dBFS" byl špatně, a analyzátor slouží právě k odměřování amplitud pro presety. Podlaha dynamiky sjednocena na −100 dB (dřív −80 dB proti ose grafu do −90 dB). Chyba doložena testem: rozdíl kompenzovaného a nekompenzovaného výpočtu = 6,0206 dB. |
+| **P11** | `e127d57` | `AnalyzeOrganSubAndHarmonics`, `AnalyzeBellPikes`, `AnalyzeNoiseShape` a `FindAllPikes` byly privátní metody uvnitř WPF okna — nezávislé na UI, ale netestovatelné (Analyzer je `net8.0-windows`). Vytaženo do `Core/07_Analysis/SpectrumAnalysis.cs` + 19 testů proti syntetickému spektru se známou odpovědí. Code-behind zkrátil z 455 na 419 řádků. |
+| **navíc** | `e127d57` | 🆕 `ScanForDrop`: když šumový kopec sahá až na kraj spektra, vracel se kmitočet vrcholu → nulová šířka pásma → uměle vysoké Q. Odhaleno při psaní testu na monotónně klesající spektrum. |
+| **P4** | `8211f4b` | Založeny `CLAUDE.md` (konvence + Gotchas), `FEATURES.md` (22 položek F-001..F-022 se sloupcem `Tests`) a pre-commit hook: celá sada testů, fail-closed bez SDK, únikový východ `PRE_COMMIT_SKIP=1`. Včetně `scripts/test-precommit-hook.sh`, který **testuje sám hook** — 4 scénáře, všechny prošly. |
 
 ---
 
