@@ -7,6 +7,7 @@ using NAudio.Wave;
 using MathNet.Numerics;
 using MathNet.Numerics.IntegralTransforms;
 using ScottPlot;
+using InvisiblePlayer.Core.Analysis;
 
 using Window = System.Windows.Window;
 using MediaColor = System.Windows.Media.Color; // ALIAS PRO VYŘEŠENÍ CHYBY CS0104
@@ -64,166 +65,23 @@ namespace InvisiblePlayer.Analyzer
 
             switch (selectedMode)
             {
-                case 0: // 🎹 VARHANY: Píky seřazené podle síly + násobky (včetně subharmonických < 1.0x)
-                    resultText = AnalyzeOrganSubAndHarmonics(freqsHz, magnitudesDb);
+                // Vlastní analytika žije v InvisiblePlayer.Core.Analysis.SpectrumAnalysis
+                // (nález P11) - tady zůstala jen vazba na UI.
+                case 0: // 🎹 VARHANY
+                    resultText = SpectrumAnalysis.DescribeOrganPartials(freqsHz, magnitudesDb);
                     break;
 
-                case 1: // 🔔 ZVONY: Dominantní inharmonické čáry + koeficienty
-                    resultText = AnalyzeBellPikes(freqsHz, magnitudesDb);
+                case 1: // 🔔 ZVONY
+                    resultText = SpectrumAnalysis.DescribeBellPartials(freqsHz, magnitudesDb);
                     break;
 
-                case 2: // 🥁 ŠUMY: Detekce vrcholku kopce, šířky základny a spádu v dB
-                    resultText = AnalyzeNoiseShape(freqsHz, magnitudesDb);
+                case 2: // 🥁 ŠUMY
+                    resultText = SpectrumAnalysis.DescribeNoiseShape(freqsHz, magnitudesDb);
                     break;
             }
 
             TxtMagicOutput.Text = resultText;
         }
-
-        // 🎹 KOUZLO 1: VARHANY (Detekce píků, subharmonických a násobků vůči nejsilnější čáře)
-        private string AnalyzeOrganSubAndHarmonics(double[] freqs, double[] dbs)
-        {
-            var pikes = FindAllPikes(freqs, dbs, -75.0); // Hledáme píky nad -75 dB
-            if (pikes.Count == 0) return "[VARHANY] Žádný výrazný tón nenalezen (nízký signál).";
-
-            // Nejsilnější pík = Dominanta
-            var mainPeak = pikes.OrderByDescending(p => p.Db).First();
-            double fMax = mainPeak.Freq;
-
-            // Seřadíme všechny píky podle amplitudy (nejsilnější první)
-            var sortedPikes = pikes.OrderByDescending(p => p.Db).Take(12).ToList();
-
-            var lines = new System.Collections.Generic.List<string>();
-            foreach (var p in sortedPikes)
-            {
-                double ratio = p.Freq / fMax; // Koeficient (př. 0.3333x, 0.5000x, 2.0000x)
-                double relDb = p.Db - mainPeak.Db;
-                lines.Add($"{p.Freq:F1}Hz ({ratio:F4}x | {relDb:F1}dB)");
-            }
-
-            return $"[VARHANY] DOMINANTA = {fMax:F1} Hz ({mainPeak.Db:F1} dBFS)\n" +
-                   $"Top Čáry (Hz | Násobek | Rel dB): " + string.Join(" | ", lines);
-        }
-
-        // 🔔 KOUZLO 2: ZVONY (Přesná spektrální analýza inharmonických piků)
-        private string AnalyzeBellPikes(double[] freqs, double[] dbs)
-        {
-            var pikes = FindAllPikes(freqs, dbs, -70.0);
-            if (pikes.Count == 0) return "[ZVON] Žádný úder nenalezen.";
-
-            var mainPeak = pikes.OrderByDescending(p => p.Db).First();
-            double fMax = mainPeak.Freq;
-
-            // Top 10 píků seřazených podle síly
-            var topPikes = pikes.OrderByDescending(p => p.Db).Take(10).ToList();
-
-            var lines = new System.Collections.Generic.List<string>();
-            foreach (var p in topPikes)
-            {
-                double ratio = p.Freq / fMax;
-                lines.Add($"{p.Freq:F1}Hz ({ratio:F4}x | {p.Db:F1}dB)");
-            }
-
-            return $"[ZVON] Hlavní pík: {fMax:F1} Hz\n" +
-                   $"Inharmonická řada čár: " + string.Join(" | ", lines);
-        }
-
-        // 🥁 KOUZLO 3: ŠUMY A FUKY (Popis geometrie kopce pro ruční přepis)
-
-        // 🥁 KOUZLO 3: ŠUMY A FUKY (Přepočet na kmitočty filtrů a sklon 20 dB/dekádu)
-        private string AnalyzeNoiseShape(double[] freqs, double[] dbs)
-        {
-            // 1. Najdeme vrchol kopce (Střední kmitočet f0)
-            int maxIdx = 0;
-            double maxDb = -999;
-            for (int i = 0; i < dbs.Length; i++)
-            {
-                if (freqs[i] >= 50 && dbs[i] > maxDb) // Ignorujeme brum pod 50 Hz
-                {
-                    maxDb = dbs[i];
-                    maxIdx = i;
-                }
-            }
-
-            if (maxDb < -75) return "[ŠUM] Žádný výrazný šumový profil nenalezen.";
-
-            double f0 = freqs[maxIdx]; // Vrchol (střední kmitočet)
-
-            // 2. Hledáme pokles o -3 dB (Mezní kmitočty f_low a f_high pro 3dB šířku pásma)
-            double target3Db = maxDb - 3.0;
-
-            double fLow = f0;
-            for (int i = maxIdx; i >= 0; i--)
-            {
-                if (dbs[i] <= target3Db) { fLow = freqs[i]; break; }
-            }
-
-            double fHigh = f0;
-            for (int i = maxIdx; i < dbs.Length; i++)
-            {
-                if (dbs[i] <= target3Db) { fHigh = freqs[i]; break; }
-            }
-
-            // Výpočet šířky pásma a činitele jakosti Q = f0 / Bandwidth
-            double bandwidth = Math.Max(1.0, fHigh - fLow);
-            double Q = f0 / bandwidth;
-
-            // 3. Výpočet mezer pro sklon 20 dB / dekádu (pokles o 20 dB odpovídá faktoru 10x v kmitočtu)
-            double target20Db = maxDb - 20.0;
-            double fHp20dB = f0 / 10.0; // Teoretických 20dB/dekádu doleva
-            double fLp20dB = f0 * 10.0; // Teoretických 20dB/dekádu doprava
-
-            // Skutečně naměřené kmitočty při poklesu o -20 dB
-            double fLow20 = f0;
-            for (int i = maxIdx; i >= 0; i--)
-            {
-                if (dbs[i] <= target20Db) { fLow20 = freqs[i]; break; }
-            }
-
-            double fHigh20 = f0;
-            for (int i = maxIdx; i < dbs.Length; i++)
-            {
-                if (dbs[i] <= target20Db) { fHigh20 = freqs[i]; break; }
-            }
-
-            return $"[ŠUM / FILTR] Předpis pro filtr bílého šumu:\n" +
-                   $"1. PÁSMOVÁ PROPUST (BPF 2.řád, 20dB/dek): Střed f0 = {f0:F0} Hz | Jakost Q ≈ {Q:F2}\n" +
-                   $"2. KASKÁDA (HP + LP 20dB/dek): HP Cutoff (-20dB) = {fLow20:F0} Hz | LP Cutoff (-20dB) = {fHigh20:F0} Hz";
-        }
-
-
-
-        // Pomocná metoda pro nalezení všech lokálních píků (vrcholků) ve spektru
-        private System.Collections.Generic.List<(double Freq, double Db)> FindAllPikes(double[] freqs, double[] dbs, double minDbThreshold)
-        {
-            var list = new System.Collections.Generic.List<(double Freq, double Db)>();
-
-            for (int i = 2; i < dbs.Length - 2; i++)
-            {
-                if (freqs[i] < 35) continue; // Ignorujeme brum pod 35 Hz
-
-                // Lokální maximum (bod je vyšší než jeho 2 sousedi vlevo i vpravo)
-                if (dbs[i] > minDbThreshold &&
-                    dbs[i] > dbs[i - 1] && dbs[i] > dbs[i - 2] &&
-                    dbs[i] > dbs[i + 1] && dbs[i] > dbs[i + 2])
-                {
-                    list.Add((freqs[i], dbs[i]));
-                }
-            }
-
-            return list;
-        }
-
-
-
-
-
-
-
-
-
-
-
 
         private void BtnSnap_Click(object sender, RoutedEventArgs e)
         {
@@ -464,11 +322,14 @@ namespace InvisiblePlayer.Analyzer
                 freqsHz[i] = freqHz;
                 freqsLog[i] = freqHz > 0 ? Math.Log10(freqHz) : 0;
 
-                double mag = (buffer[i].Magnitude * 2.0) / n;
-                magnitudesDb[i] = 20 * Math.Log10(Math.Max(mag, 1e-4));
+                // OPRAVA S9: kompenzace koherentního zisku Hannova okna (0,5).
+                // Bez ní vycházela amplituda o ~6 dB nižší, než ve skutečnosti byla.
+                magnitudesDb[i] = SpectrumAnalysis.MagnitudeToDbFs(
+                    buffer[i].Magnitude, n, SpectrumAnalysis.HannCoherentGain);
             }
 
-            double peakDb = 20 * Math.Log10(Math.Max(peak, 1e-4));
+            // Špička je časový vzorek, ne FFT přihrádka -> žádné okno ani /n.
+            double peakDb = 20 * Math.Log10(Math.Max(peak, 1e-5));
             double vuPercent = Math.Min(100, Math.Max(0, (peakDb + 60) * (100.0 / 60.0)));
 
             // Předchozí překreslení ještě běží -> tenhle snímek zahodíme. Bez toho by
