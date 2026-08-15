@@ -28,7 +28,8 @@ SDK 8.0.424 doinstalováno až v průběhu, poté vše ověřeno sestavením a t
 | **M4** | `a9248b0` | Analyzer: `ComboMicrophones` neměl `SelectionChanged`, výběr vstupu neměl efekt → handler + napojení v XAML. |
 | **M6** | `a9248b0` | Analyzer: `_isFrozen` / `_waitForSnap` / `_isMeasuringSnap` sdílené mezi vlákny bez `volatile`; `_waitForSnap` se čte v těsné per-sample smyčce. |
 | **M7** | `9ab0142` | `PlayMidiFileAsync` se volá fire-and-forget; výjimka z `MidiFile.Read` mizela beze stopy → událost `OnPlaybackError` + handler v `App.OnStartup`. |
-| **M8** | `9ab0142` | `DirectoryNavigator.LoadDirectory` hledal soubor přes case-sensitive `IndexOf`, zatímco Windows FS je case-insensitive → `FindIndex` + `OrdinalIgnoreCase`. |
+| **M8** | `9ab0142` | `DirectoryNavigator.LoadDirectory` hledal soubor přes case-sensitive `IndexOf`, zatímco Windows FS je case-insensitive → `FindIndex` + `OrdinalIgnoreCase`. ⚠️ Na Linuxu **nelze ověřit testem** (`File.Exists` selže dřív) — zbývá kontrola na Windows. |
+| **M9** | `fb64758` | 🆕 **Nález odhalený testem, ne review ani překladačem.** `TryToNavigateToNeighborFolder` nemělo ošetření kolem `GetDirectories()`/`GetFiles()`; jediná nečitelná sousední složka vyhodila `UnauthorizedAccessException`, která propadla až do `VgaEngine.Run` / `MainWindow_KeyDown` → pád. Na Windows skoro zaručené: každý NTFS svazek má v kořeni `System Volume Information` se zamítnutým ACL, takže stačilo přehrávat soubor z kořene disku a stisknout PageDown. Ověřeno oběma směry — bez opravy test padá právě touto výjimkou. |
 
 ### Medium / Low
 
@@ -45,6 +46,7 @@ SDK 8.0.424 doinstalováno až v průběhu, poté vše ověřeno sestavením a t
 | # | Commit | Popis |
 |---|---|---|
 | **P1** | `088caaf` | Založen `tests/InvisiblePlayer.Core.Tests` (xUnit) — **57 testů, 0 selhání**. Pokrývá `AudioMeter`, `ToneEngine`, `BandPassFilter`, `AdsrEnvelope`, `Temperament`, `VoicePreset`, `SynthVoice`. |
+| **P9** | `fb64758` | 11 testů pro `DirectoryNavigator` + přesun souboru z projektu `UI.Windows` do `Core` (hlásil se do namespace `InvisiblePlayer.Core`, ležel jinde a neměl WPF závislosti — kvůli tomu nešel testovat). Celkem **68 testů**. |
 | **P2** | `088caaf` | `Directory.Build.props` + `.editorconfig`. `TreatWarningsAsErrors=true` (CS* = chyba) **a zároveň** `CodeAnalysisTreatWarningsAsErrors=false` (CA* = varování). `EnableWindowsTargeting` mimo Windows. |
 
 ---

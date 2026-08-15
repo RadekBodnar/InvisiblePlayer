@@ -7,8 +7,15 @@ Legenda: 🔴 Blocker · 🟠 Major · 🟡 Medium · 🔵 Low
 
 > **Stav ověření (2026-08-15):** na stroji je .NET SDK 8.0.424 (`~/.dotnet`, bez sudo).
 > Build: `dotnet build <projekt>.csproj --artifacts-path ~/build/InvisiblePlayer`
-> Testy: `dotnet test tests/InvisiblePlayer.Core.Tests/…` — aktuálně **57 testů, 0 selhání**.
+> Testy: `dotnet test tests/InvisiblePlayer.Core.Tests/…` — aktuálně **68 testů, 0 selhání**.
 > WPF projekty se na Linuxu překládají (`EnableWindowsTargeting`), spustit je nelze.
+
+> ⚠️ **Co Linux ověřit NEMŮŽE — nutná kontrola na Windows:**
+> - **M8** (case-insensitive hledání souboru): na case-sensitive FS selže `File.Exists`
+>   dřív, než se k porovnání dojde. Test to detekuje za běhu a degraduje se na kontrolu
+>   přesné shody — **oprava tedy zůstává na Linuxu neověřená**.
+> - **M5** (`Console.KeyAvailable` vs myš): vyžaduje Windows konzoli.
+> - Cokoli běhového ve WPF projektech — překlad ano, spuštění ne.
 
 ---
 
@@ -95,6 +102,5 @@ Legenda: 🔴 Blocker · 🟠 Major · 🟡 Medium · 🔵 Low
 - [ ] **P8** 🔵 🆕 — `NU1701`: `ScottPlot.WPF` táhne tranzitivně `SkiaSharp.Views.WPF`
   bez `net8.0-windows` assetů (restore přes .NET Framework fallback). Zatím tlumeno
   v `Directory.Build.props`; prověřit při upgradu ScottPlotu.
-- [ ] **P9** 🟡 🆕 — rozšířit testy na `DirectoryNavigator` (potřebuje dočasný adresář —
-  ověřit opravu M8 na case-insensitive cestě) a `LowPassFilter` (stabilita).
-  Ty dvě třídy jsou zatím bez pokrytí.
+- [ ] **P10** 🔵 🆕 — dopsat testy pro `LowPassFilter` (stabilita impulsní odezvy,
+  klampování cutoffu pod Nyquist). Jediná netestovaná čistá třída v `Core`.
