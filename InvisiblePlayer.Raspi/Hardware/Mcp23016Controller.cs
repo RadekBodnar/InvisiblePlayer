@@ -41,9 +41,19 @@ namespace InvisiblePlayer.Raspi.Hardware
             _i2cDevice.Write(new byte[] { GP1, ledMask });
         }
 
+        private bool _disposed;
+
         public void Dispose()
         {
-            _i2cDevice?.Dispose();
+            // OPRAVA L6: '_i2cDevice?.Dispose()' mělo mrtvý '?.' - pole je readonly,
+            // non-nullable a přiřazené v konstruktoru. Chyběl naopak guard proti
+            // dvojímu Dispose (I2cDevice by na druhé volání mohl sáhnout na už
+            // uvolněný handle) a GC.SuppressFinalize (CA1816).
+            if (_disposed) return;
+            _disposed = true;
+
+            _i2cDevice.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -49,6 +49,23 @@ SDK 8.0.424 doinstalováno až v průběhu, poté vše ověřeno sestavením a t
 | **P9** | `fb64758` | 11 testů pro `DirectoryNavigator` + přesun souboru z projektu `UI.Windows` do `Core` (hlásil se do namespace `InvisiblePlayer.Core`, ležel jinde a neměl WPF závislosti — kvůli tomu nešel testovat). Celkem **68 testů**. |
 | **P2** | `088caaf` | `Directory.Build.props` + `.editorconfig`. `TreatWarningsAsErrors=true` (CS* = chyba) **a zároveň** `CodeAnalysisTreatWarningsAsErrors=false` (CA* = varování). `EnableWindowsTargeting` mimo Windows. |
 
+### Druhá vlna (po instalaci SDK, vše ověřeno sestavením i testy)
+
+| # | Commit | Popis |
+|---|---|---|
+| **S2** | `04b3ca7` | `VoicePreset.Instrument` se nastavovalo, ale nikde nevyhodnocovalo — `NoteOn` vždy vytvořil `OrganVoice` a Piano/Cembalo/Bell byly nedosažitelné. Doplněna factory `CreateVoice` + nastavitelný `CurrentPreset`; `ActiveNote.Voice` z `OrganVoice` na `SynthVoice`. |
+| **předpoklad S2** | `04b3ca7` | 🆕 **Nález objevený při psaní charakterizačních testů:** `NoiseGenerator` používal `new Random()` bez semínka → engine nebyl reprodukovatelný a regresní test zvuku nešlo napsat vůbec. `NoiseGenerator(int? seed = null)`, semínko prochází až do `ToneEngine`. Výchozí chování beze změny. |
+| **S3** | `8bd80c1` | `_001_Bombard16Preset` měl `Name = "Aeolus"`, `Number = 85` — kolize s `_085_Aeolus`. Že jsou špatně data (ne název třídy) plyne z harmonických: celočíselná řada 1-2-3-4-5 je spektrum píšťaly, zvon má partiály neceločíselné. Odstraněn i `ModType = AM`, který `OrganVoice` nikdy nečetl. Test `CislaRejstriku_JsouJedinecna` hlídá návrat kolize. |
+| **S6** | `8bd80c1` | `DirectoryNavigator` pletl „další neexistuje" s „tady máš zase ten samý" → poslední skladba se opakovala donekonečna. Opraven **kontrakt** (`GetNextFile`/`GetPreviousFile` vracejí `null`), politiku volí volající. |
+| **S7** | *tento commit* | `SetCursorPosition(0, 7)` a 80znakový VU metr natvrdo → `ArgumentOutOfRangeException` v malém okně. Doplněno `TrySetCursor()` (3 místa) a `MeterWidth()` odvozená od `Console.WindowWidth`. |
+| **S8 (část)** | *tento commit* | Legenda „Staff Attenuation Keys [1-0]" slibovala funkci, kterou `HandleInput` nemá. Text opraven na pravdivý; vlastní mutování zůstává otevřené jako funkce, ne oprava. |
+| **S10** | `b6ce211` | `InvisiblePlayer.Core.ToneEngine` byl namespace i třída (CS0118) — `Audio.cs` proto psalo plnou kvalifikaci všude a testy potřebovaly alias za deklarací namespace. Přejmenováno na `…​.Synthesis`, složka `02_ToneEngine` → `02_Synthesis`. |
+| **L3** | `b6ce211` | `Temperament` byl jako jediný typ v repu v globálním namespace (CA1050). Přesunut do `InvisiblePlayer.Core.Synthesis`; ověřeno 0 výskytů CA1050. |
+| **L4** | *tento commit* | `MainWindow_KeyDown` měl dvě mrtvé větve podmínky (`Key.Return && Alt` pohlceno `Key.Return`, `Key.F && Ctrl` pohlceno `Key.F`) — `isAltPressed` tím pádem nebyla použitá. |
+| **L6** | *tento commit* | `Mcp23016Controller.Dispose` měl mrtvý `?.` na non-nullable readonly poli a chyběl guard proti dvojímu Dispose + `GC.SuppressFinalize`. |
+| **P6** | *tento commit* | Odstraněn zbytečný `<Folder Include="bin\" />` z `Core.csproj`. |
+| **P10** | *tento commit* | 8 testů pro `LowPassFilter` (konvergence impulsní odezvy, hodnoty mimo rozsah, potlačení výšek, `Reset`, přepočet při změně vzorkovací frekvence). Celkem **95 testů**. |
+
 ---
 
 ## Opravy vlastních chyb v review

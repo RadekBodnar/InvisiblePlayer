@@ -343,7 +343,7 @@ namespace InvisiblePlayer.UI.Windows
 
         private static void RenderDashboard()
         {
-            Console.SetCursorPosition(0, 0);
+            if (!TrySetCursor(0, 0)) return;
 
             string currentFile = _navigator.CurrentFile ?? "No file loaded";
             string fileName = Path.GetFileName(currentFile);
@@ -407,16 +407,47 @@ namespace InvisiblePlayer.UI.Windows
             Console.WriteLine("-----------------------------------------------------------------------------------------");
         }
 
+        /// <summary>
+        /// Přesun kurzoru odolný vůči malému oknu (nález S7).
+        /// Console.SetCursorPosition vyhodí ArgumentOutOfRangeException, pokud cíl
+        /// leží mimo buffer - a v hlavní smyčce ji nikdo nechytá, takže zmenšení
+        /// konzole shodilo aplikaci. Vrací false, když se na daný řádek nevejdeme.
+        /// </summary>
+        private static bool TrySetCursor(int left, int top)
+        {
+            try
+            {
+                if (top >= Console.BufferHeight || left >= Console.BufferWidth) return false;
+                Console.SetCursorPosition(left, top);
+                return true;
+            }
+            catch (Exception ex) when (ex is ArgumentOutOfRangeException or IOException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Šířka VU metru odvozená od okna, ne natvrdo 80 znaků (nález S7).
+        /// Rezerva 14 znaků na " L: [" + "] -120.0 dB".
+        /// </summary>
+        private static int MeterWidth()
+        {
+            try { return Math.Clamp(Console.WindowWidth - 14, 10, 80); }
+            catch (IOException) { return 40; }
+        }
+
         private static void RenderMetersOnly()
         {
-            Console.SetCursorPosition(0, 7);
+            if (!TrySetCursor(0, 7)) return;
 
             Console.ForegroundColor = ConsoleColor.DarkGray;
             Console.WriteLine("Legend: -120dB                                             -60dB                       0dB");
             Console.ResetColor();
 
-            string barL = AudioMeter.RenderBar(_leftDb, 80);
-            string barR = AudioMeter.RenderBar(_rightDb, 80);
+            int width = MeterWidth();
+            string barL = AudioMeter.RenderBar(_leftDb, width);
+            string barR = AudioMeter.RenderBar(_rightDb, width);
 
             Console.Write(" L: [");
             Console.ForegroundColor = ConsoleColor.Green;
@@ -433,10 +464,10 @@ namespace InvisiblePlayer.UI.Windows
 
         private static void RenderMidiStaffOnly()
         {
-            Console.SetCursorPosition(0, 7);
+            if (!TrySetCursor(0, 7)) return;
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write(" Staff Attenuation Keys [1-0]: ");
+            Console.Write(" Kanaly (mutovani zatim NEIMPLEMENTOVANO - viz TODO S8): ");
             for (int i = 0; i < 10; i++)
             {
                 string label = (i == 9) ? "Ch10[DRUM]" : $"Ch{i + 1:D2}";

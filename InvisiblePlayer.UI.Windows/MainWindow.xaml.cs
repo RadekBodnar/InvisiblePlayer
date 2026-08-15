@@ -105,7 +105,6 @@ namespace InvisiblePlayer.UI.Windows
         {
             if (_mediaPlayer == null) return;
 
-            bool isAltPressed = (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt;
             bool isCtrlPressed = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
 
             // Alt + F4
@@ -115,11 +114,13 @@ namespace InvisiblePlayer.UI.Windows
                 return;
             }
 
-            // Přepínání Fullscreen / Okno
-            if ((e.Key == Key.Return && isAltPressed) ||
-                (e.Key == Key.Return) ||
-                (e.Key == Key.F) ||
-                (e.Key == Key.F && isCtrlPressed) ||
+            // Přepínání Fullscreen / Okno.
+            // OPRAVA L4: původní podmínka měla dvě mrtvé větve -
+            // '(Key.Return && Alt)' pohltilo následující '(Key.Return)' a
+            // '(Key.F && Ctrl)' pohltilo '(Key.F)'. Proměnná isAltPressed tím
+            // pádem nebyla vůbec použitá. Zbylo, co skutečně platí:
+            if (e.Key == Key.Return ||
+                e.Key == Key.F ||
                 (e.Key == Key.L && isCtrlPressed))
             {
                 ToggleFullscreen();
