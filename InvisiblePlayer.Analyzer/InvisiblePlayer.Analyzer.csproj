@@ -6,6 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+
+    <!-- NU1701: ScottPlot.WPF táhne tranzitivně SkiaSharp.Views.WPF bez
+         net8.0-windows assetů (restore přes .NET Framework fallback).
+         Tlumeno CÍLENĚ jen zde - globálně v Directory.Build.props by to skrylo
+         budoucí NU1701 ve všech projektech (nález externího review). -->
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

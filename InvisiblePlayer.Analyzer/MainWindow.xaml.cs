@@ -85,11 +85,7 @@ namespace InvisiblePlayer.Analyzer
 
         private void BtnSnap_Click(object sender, RoutedEventArgs e)
         {
-            _isFrozen = false;          // Odmrazíme graf
-            _waitForSnap = true;        // Vyhodíme starý buffer
-            _isMeasuringSnap = true;    // Nastavíme příznak pro audio vlákno
-
-            BtnSnap.Content = "⏳ MĚŘÍM...";
+            TriggerSnap();
         }
 
 
@@ -277,27 +273,26 @@ namespace InvisiblePlayer.Analyzer
 
                     // Bezpečně zjišťujeme stav z naší C# proměnné (žádné WPF UI!)
                     bool wasSnapCapture = _isMeasuringSnap;
+                    if (wasSnapCapture) _isMeasuringSnap = false;
 
-                    ProcessFFT(_sampleBuffer, _maxPeak);
+                    // ZÁVOD, KTERÝ TU BYL (odhaleno externím review):
+                    // Dřív se hned po ProcessFFT nastavilo _isFrozen = true. Dokud byl
+                    // Dispatcher.Invoke BLOKUJÍCÍ, lambda stihla vykreslit dřív, než se
+                    // příznak nastavil. Po přechodu na InvokeAsync (oprava M2) se pořadí
+                    // rozvázalo: lambda doběhla až POTOM, narazila na 'if (_isFrozen) return'
+                    // a snímek SNAP vůbec nevykreslila - na grafu zůstal ten předchozí.
+                    //
+                    // Zmrazení proto NEDĚLÁME odsud. Předáváme ho do ProcessFFT, která ho
+                    // provede UVNITŘ té samé UI operace, co kreslí - tedy atomicky vůči ní.
+                    ProcessFFT(_sampleBuffer, _maxPeak, freezeAfterRender: wasSnapCapture);
                     _maxPeak = 0;
-
-                    // Pokud to byl odchyt pro SNAP, ihned zamkneme další překreslování
-                    if (wasSnapCapture)
-                    {
-                        _isFrozen = true;
-                        _isMeasuringSnap = false;
-
-                        // Aktualizaci tlačítka pošleme na UI vlákno neblokujícím způsobem -
-                        // jsme v audio callbacku, čekat tu na UI znamená vypadlé vzorky.
-                        Dispatcher.InvokeAsync(() => BtnSnap.Content = "📸 SNAP [Enter]");
-                    }
                 }
             }
         }
 
 
 
-        private void ProcessFFT(float[] samples, float peak)
+        private void ProcessFFT(float[] samples, float peak, bool freezeAfterRender = false)
         {
             int n = samples.Length;
             double[] window = MathNet.Numerics.Window.Hann(n);
@@ -335,7 +330,9 @@ namespace InvisiblePlayer.Analyzer
             // Předchozí překreslení ještě běží -> tenhle snímek zahodíme. Bez toho by
             // fronta InvokeAsync rostla donekonečna, kdyby UI nestíhalo tempo capture.
             // Výjimka: SNAP odchyt musí projít vždy, jinak by uživateli utekl.
-            if (_renderPending && !_isMeasuringSnap) return;
+            // SNAP odchyt musí projít VŽDY - jinak by ho zahodil zpětný tlak
+            // a uživateli by "zmrazení" ukázalo cizí snímek.
+            if (_renderPending && !freezeAfterRender) return;
             _renderPending = true;
 
             Dispatcher.InvokeAsync(() =>
@@ -353,8 +350,10 @@ namespace InvisiblePlayer.Analyzer
                 else
                     VuMeter.Foreground = new SolidColorBrush(MediaColor.FromRgb(46, 204, 113));
 
-                // 2. GRAF A KOUZLA JEN KDYŽ NEJSME ZMRAZENI
-                if (_isFrozen) return;
+                // 2. GRAF A KOUZLA JEN KDYŽ NEJSME ZMRAZENI.
+                // Výjimka: tohle JE ten snímek, kvůli kterému se mrazí - ten se
+                // vykreslit musí, teprve pak se zamkne (viz finally níže).
+                if (_isFrozen && !freezeAfterRender) return;
 
                 // Vykreslení grafu
                 WpfPlot1.Plot.Clear();
@@ -368,6 +367,15 @@ namespace InvisiblePlayer.Analyzer
               }
               finally
               {
+                // Zmrazení AŽ TEĎ, ve stejné UI operaci, která snímek vykreslila.
+                // Kdyby se nastavovalo z audio vlákna hned po ProcessFFT, lambda by
+                // dorazila později a snímek by zahodila.
+                if (freezeAfterRender)
+                {
+                    _isFrozen = true;
+                    BtnSnap.Content = "📸 SNAP [Enter]";
+                }
+
                 // MUSÍ být ve finally - i větev "return" u _isFrozen musí frontu uvolnit,
                 // jinak by se po prvním zmrazení grafu překreslování zaseklo natrvalo.
                 _renderPending = false;
@@ -395,6 +403,7 @@ namespace InvisiblePlayer.Analyzer
         private void TriggerSnap()
         {
             _isFrozen = false;
+            _maxPeak = 0;          // jinak by VU metr ukázal špičku z předchozího okna
             _waitForSnap = true;
             _isMeasuringSnap = true;
             BtnSnap.Content = "⏳ MĚŘÍM...";

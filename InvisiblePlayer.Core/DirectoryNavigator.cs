@@ -176,11 +176,8 @@ namespace InvisiblePlayer.Core
         }
 
 
-        private static bool IsSupportedExtension(string path)
-        {
-            string ext = Path.GetExtension(path).ToLowerInvariant();
-            return ext == ".mp3" || ext == ".wav" || ext == ".flac" || ext == ".mid" || ext == ".midi" || ext == ".kar"
-                || ext == ".avi" || ext == ".mp4" || ext == ".mkv" || ext == ".wmv"; // <--- Přidány video formáty
-        }
+        // Deleguje na MediaTypes - JEDINÝ zdroj pravdy o příponách.
+        // Dřív tu byl vlastní seznam, který se rozcházel s tím v MediaLauncher.
+        private static bool IsSupportedExtension(string path) => MediaTypes.IsSupported(path);
     }
 }

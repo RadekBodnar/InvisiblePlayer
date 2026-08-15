@@ -1,8 +1,11 @@
-root = true
+﻿root = true
 
 [*]
 charset = utf-8
-end_of_line = crlf
+# Repozitář má v pracovním stromu LF (52 souborů, 0 s CRLF) a .gitattributes
+# normalizaci řeší. 'crlf' tu bylo omylem a dělalo z každého souboru
+# nález pro `dotnet format --verify-no-changes`.
+end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 

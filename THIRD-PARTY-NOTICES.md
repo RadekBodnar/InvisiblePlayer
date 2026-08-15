@@ -1,7 +1,8 @@
 # Third-Party Notices
 
-This project (InvisiblePlayer) is licensed under the MIT License (see [LICENSE](LICENSE)),
-but it also uses the following third-party libraries, which come with their own license terms.
+InvisiblePlayer's own code is licensed under the MIT License — the full text is in
+[LICENSE](LICENSE). This file lists third-party libraries, which come with their own
+license terms.
 
 ---
 
@@ -28,6 +29,29 @@ but it also uses the following third-party libraries, which come with their own 
 
 - **License:** MIT
 - **Source:** https://github.com/dotnet/iot
+
+## MathNet.Numerics
+
+- **License:** MIT
+- **Source:** https://github.com/mathnet/mathnet-numerics
+
+## ScottPlot / ScottPlot.WPF
+
+- **License:** MIT
+- **Source:** https://github.com/ScottPlot/ScottPlot
+- **Note:** Transitively pulls in SkiaSharp (MIT, https://github.com/mono/SkiaSharp).
+
+## xUnit.net, xunit.runner.visualstudio
+
+- **License:** Apache-2.0 (xunit.runner.visualstudio: Apache-2.0)
+- **Source:** https://github.com/xunit/xunit
+- **Note:** Test-only dependency; not distributed with the application.
+
+## coverlet.collector
+
+- **License:** MIT
+- **Source:** https://github.com/coverlet-coverage/coverlet
+- **Note:** Test-only dependency; not distributed with the application.
 
 ---
 

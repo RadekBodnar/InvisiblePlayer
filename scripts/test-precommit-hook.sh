@@ -71,11 +71,15 @@ git reset -q HEAD "$BROKEN"; rm -f "$BROKEN"
 
 echo
 echo "=== 4) Čistý strom musí projít ==="
-# Nastagujeme skutečný soubor s kódem, ale bez jakékoli změny obsahu.
-git add InvisiblePlayer.Core/AudioMeter.cs
+# DŘÍV SE TU STAGOVAL AudioMeter.cs a pak odstagoval `git reset HEAD` — jenže
+# kdyby ho uživatel měl nastagovaný záměrně, test by mu jeho práci z indexu
+# vyhodil. Test nesmí sahat na cizí stav (nález externího review).
+# Používáme proto vlastní dočasný soubor, který stejně po sobě mažeme.
+echo '// probe' > "$BROKEN"
+git add "$BROKEN"
 "$HOOK" >/dev/null 2>&1
 rc=$?
-git reset -q HEAD InvisiblePlayer.Core/AudioMeter.cs
+git reset -q HEAD "$BROKEN"; rm -f "$BROKEN"
 check "zelený stav commit PUSTÍ" 0 $rc
 
 echo

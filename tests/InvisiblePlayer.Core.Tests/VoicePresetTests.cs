@@ -55,9 +55,19 @@ public class VoicePresetTests
     [Fact]
     public void CislaRejstriku_JsouJedinecna()
     {
-        var duplicates = VsechnyPresety()
+        // POZOR na filtr `Number >= 0`: dřív tady byl a byl to SLEPÝ BOD.
+        // Presety s Number = -1 ("nepřiřazeno") se tím z kontroly vyřadily,
+        // takže test mlčel o tom, že Cembalo a Zvon číslo vůbec nemají.
+        // Teď kontrolujeme VŠECHNY a nepřiřazené číslo je samo o sobě chyba.
+        var all = VsechnyPresety()
             .Select(row => ((string)row[0], (VoicePreset)row[1]))
-            .Where(t => t.Item2.Number >= 0)
+            .ToList();
+
+        var unnumbered = all.Where(t => t.Item2.Number < 0).Select(t => t.Item1).ToList();
+        Assert.True(unnumbered.Count == 0,
+            "Preset bez přiřazeného čísla rejstříku: " + string.Join(", ", unnumbered));
+
+        var duplicates = all
             .GroupBy(t => t.Item2.Number)
             .Where(g => g.Count() > 1)
             .Select(g => $"číslo {g.Key}: {string.Join(", ", g.Select(t => t.Item1))}")
@@ -65,6 +75,31 @@ public class VoicePresetTests
 
         Assert.True(duplicates.Count == 0,
             "Kolize čísel rejstříků: " + string.Join(" | ", duplicates));
+    }
+
+    /// <summary>
+    /// Konkrétní očekávaná mapa číslo → jméno → generátor.
+    ///
+    /// Kontrola „je to jedinečné a nenulové" je slabá: `_200_Piano_Petrof` neměl
+    /// `Instrument` vůbec, spadl na výchozí `InstrumentType.Organ` a klavírní preset
+    /// tak vyráběl `OrganVoice`. Žádný test na jedinečnost to odhalit nemohl —
+    /// odhalilo to až externí review. Proto se tady tvrdí konkrétní hodnoty.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(_001_Bombard16Preset), 1, "Bombard 16'", InstrumentType.Organ)]
+    [InlineData(nameof(_085_Aeolus), 85, "Aeolus", InstrumentType.Bell)]
+    [InlineData(nameof(_200_Piano_Petrof), 200, "Piano (Petrof)", InstrumentType.Piano)]
+    [InlineData(nameof(_300_Cembalo_RandallHopkirk), 201, "Cembalo (Randall & Hopkirk)", InstrumentType.Cembalo)]
+    [InlineData(nameof(_400_Bell_Zikmund), 202, "Zvon Zikmund", InstrumentType.Bell)]
+    public void Preset_MaOcekavanaMetadata(string presetName, int number, string name, InstrumentType instrument)
+    {
+        var preset = VsechnyPresety()
+            .Select(row => ((string)row[0], (VoicePreset)row[1]))
+            .Single(t => t.Item1 == presetName).Item2;
+
+        Assert.Equal(number, preset.Number);
+        Assert.Equal(name, preset.Name);
+        Assert.Equal(instrument, preset.Instrument);
     }
 
     [Theory]

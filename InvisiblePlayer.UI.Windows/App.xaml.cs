@@ -11,41 +11,36 @@ namespace InvisiblePlayer.UI.Windows
 {
     public static class MediaLauncher
     {
-        // Seznam přípon, které považujeme za video
-        private static readonly string[] VideoExtensions = new[]
-        {
-            ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v"
-        };
-
         public static void Launch(string filePath, InputManager inputManager)
         {
-            string ext = Path.GetExtension(filePath).ToLowerInvariant();
-
-            if (VideoExtensions.Contains(ext))
+            // Klasifikace přes MediaTypes v Core - stejný zdroj pravdy jako
+            // DirectoryNavigator. Dřív měl launcher vlastní seznam přípon a ty dva
+            // se rozešly: .mov/.flv/.webm/.m4v se rozpoznaly jako video, ale
+            // navigátor je z playlistu vyhodil, takže se nespustilo nic.
+            switch (MediaTypes.Classify(filePath))
             {
-                // VIDEO -> Spustíme WPF okno s LibVLC
-                Application.Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
+                case MediaKind.Video:
+                    // VIDEO -> Spustíme WPF okno s LibVLC
+                    Application.Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
 
-                var window = new MainWindow();
-                Application.Current.MainWindow = window;
-                window.Show();
-                window.PlayFile(filePath);
-            }
-            else if (ext == ".mid" || ext == ".midi")
-            {
-                // MIDI -> Spustíme přehrávání souboru přes náš nový InputManager v Core
-                _ = inputManager.PlayMidiFileAsync(filePath);
+                    var window = new MainWindow();
+                    Application.Current.MainWindow = window;
+                    window.Show();
+                    window.PlayFile(filePath);
+                    break;
 
-                // Spustíme VGA konzoli pro vizualizaci
-                VgaEngine.Run(filePath);
-            }
-            else
-            {
-                // AUDIO / OSTATNÍ -> Spustíme původní VGA konzoli
-                VgaEngine.Run(filePath);
+                case MediaKind.Midi:
+                    // Zahrnuje i .kar - dřív se sem dostaly jen .mid/.midi
+                    // a karaoke soubory tiše spadly do audio větve, kde nehrály.
+                    _ = inputManager.PlayMidiFileAsync(filePath);
+                    VgaEngine.Run(filePath);
+                    break;
 
-                // Po skončení konzole aplikaci ukončíme
-                Application.Current.Shutdown();
+                default:
+                    // AUDIO / OSTATNÍ -> původní VGA konzole
+                    VgaEngine.Run(filePath);
+                    Application.Current.Shutdown();
+                    break;
             }
         }
     }

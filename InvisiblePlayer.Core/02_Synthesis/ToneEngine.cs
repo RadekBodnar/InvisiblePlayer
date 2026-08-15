@@ -94,15 +94,20 @@ namespace InvisiblePlayer.Core.Synthesis
 
         public void NoteOn(int noteNumber, int channel = 0)
         {
-            // Umlčený kanál notu vůbec nerozezní - hlas se ani nevytvoří.
-            if (IsChannelMuted(channel)) return;
-
-            // Přepočet MIDI noty na frekvenci (A440 ladění + volitelná historická temperatura)
+            // Přepočet MIDI noty na frekvenci (A440 ladění + volitelná historická temperatura).
+            // Mimo zámek schválně - je to čistý výpočet a nemá smysl jím zámek držet.
             double freq = 440.0 * Math.Pow(2.0, (noteNumber - 69) / 12.0)
                         * Math.Pow(2.0, _temperament.CentOffset(noteNumber) / 1200.0);
 
             lock (_lock)
             {
+                // Kontrola mute MUSÍ být uvnitř téhož zámku jako přidání hlasu.
+                // Dřív byla před ním, což je klasické check-then-act: MIDI vlákno
+                // zjistilo "kanál není umlčený", UI vlákno mezitím kanál umlčelo
+                // a prošlo seznam hlasů (nový tam ještě nebyl), a MIDI vlákno pak
+                // hlas přidalo do už umlčeného kanálu. Nález externího review.
+                if (IsChannelMuted(channel)) return;
+
                 // Pokud tenhle tón už hraje (rychlé opakování / opětovný NoteOn dřív, než
                 // doznělo předchozí spuštění), NEVYTVÁŘÍME druhou překrývající se instanci
                 // (ta způsobovala náhodné "přeladění" zvuku fázovým rušením). Místo toho
@@ -151,15 +156,19 @@ namespace InvisiblePlayer.Core.Synthesis
         // 1b. MUTOVÁNÍ MIDI KANÁLŮ (nález S8)
         // =========================================================================
 
-        // Bitová maska umlčených kanálů 0..15. Zapisuje UI vlákno, čte MIDI vlákno
-        // -> volatile kvůli viditelnosti. Int stačí, kanálů je 16.
-        private volatile int _mutedChannelMask;
+        // Bitová maska umlčených kanálů 0..15.
+        //
+        // NENÍ volatile a NEČTE se mimo zámek: 'volatile' zajistí viditelnost, ale
+        // NEDĚLÁ z '|=' a '&=' atomickou operaci - jsou to read-modify-write, takže
+        // dva souběžné zápisy si můžou navzájem přepsat výsledek. Celý přístup
+        // k masce proto vede přes _lock, stejně jako seznam hlasů.
+        private int _mutedChannelMask;
 
         /// <summary>Je kanál (0..15) umlčený?</summary>
         public bool IsChannelMuted(int channel)
         {
             if ((uint)channel > 15) return false;
-            return (_mutedChannelMask & (1 << channel)) != 0;
+            lock (_lock) { return (_mutedChannelMask & (1 << channel)) != 0; }
         }
 
         /// <summary>
@@ -171,14 +180,16 @@ namespace InvisiblePlayer.Core.Synthesis
         {
             if ((uint)channel > 15) return;
 
-            int bit = 1 << channel;
-            if (muted) _mutedChannelMask |= bit;
-            else _mutedChannelMask &= ~bit;
-
-            if (!muted) return;
-
+            // Změna masky I umlčení znějících tónů v JEDNÉ kritické sekci - jinak
+            // stihne souběžné NoteOn přidat hlas mezi tyhle dva kroky.
             lock (_lock)
             {
+                int bit = 1 << channel;
+                if (muted) _mutedChannelMask |= bit;
+                else _mutedChannelMask &= ~bit;
+
+                if (!muted) return;
+
                 foreach (var note in _activeBombardNotes)
                 {
                     if (note.Channel == channel) note.Voice.NoteOff();

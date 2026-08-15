@@ -1,4 +1,5 @@
 ﻿using InvisiblePlayer.Core.Generators;
+using InvisiblePlayer.Core.Input;
 using InvisiblePlayer.Core.Synthesis;
 
 namespace InvisiblePlayer.Core.Tones
@@ -11,6 +12,7 @@ namespace InvisiblePlayer.Core.Tones
         public static VoicePreset Preset => new VoicePreset
         {
             Name = "Cembalo (Randall & Hopkirk)",
+            Number = RegisterNumbers.Cembalo,
             Instrument = InstrumentType.Cembalo
         };
     }
