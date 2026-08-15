@@ -95,10 +95,21 @@ namespace InvisiblePlayer.Core
             DirectoryInfo? parentDir = Directory.GetParent(currentFolder);
             if (parentDir == null) return false;
 
-            // Seznam všech podsložek v nadřazeném adresáři
-            var subFolders = parentDir.GetDirectories()
-                .OrderBy(d => d.FullName, StringComparer.Ordinal)
-                .ToList();
+            // Seznam všech podsložek v nadřazeném adresáři.
+            // Výpis může selhat na právech - typicky když soubor leží přímo v kořeni
+            // disku a nadřazeným adresářem je "D:\". Nemožnost přejít do sousední
+            // složky není chyba, jen konec cesty.
+            List<DirectoryInfo> subFolders;
+            try
+            {
+                subFolders = parentDir.GetDirectories()
+                    .OrderBy(d => d.FullName, StringComparer.Ordinal)
+                    .ToList();
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+            {
+                return false;
+            }
 
             int currentFolderIndex = subFolders.FindIndex(d => d.FullName.Equals(currentFolder, StringComparison.OrdinalIgnoreCase));
             if (currentFolderIndex == -1) return false;
@@ -109,10 +120,26 @@ namespace InvisiblePlayer.Core
             while (targetFolderIndex >= 0 && targetFolderIndex < subFolders.Count)
             {
                 var targetFolder = subFolders[targetFolderIndex];
-                var filesInTarget = Directory.GetFiles(targetFolder.FullName)
-                    .Where(f => IsSupportedExtension(f))
-                    .OrderBy(f => f, StringComparer.Ordinal)
-                    .ToList();
+
+                // JEDNOTLIVÁ nečitelná složka nesmí shodit celou navigaci - jen ji
+                // přeskočíme. Na Windows má každý NTFS svazek v kořeni
+                // "System Volume Information" se zamítnutým ACL, takže bez tohoto
+                // ošetření stačilo přehrávat soubor z kořene disku a stisknout
+                // PageDown na konci složky -> neodchycená UnauthorizedAccessException
+                // až ve VgaEngine.Run / MainWindow_KeyDown -> pád aplikace.
+                List<string> filesInTarget;
+                try
+                {
+                    filesInTarget = Directory.GetFiles(targetFolder.FullName)
+                        .Where(f => IsSupportedExtension(f))
+                        .OrderBy(f => f, StringComparer.Ordinal)
+                        .ToList();
+                }
+                catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+                {
+                    targetFolderIndex += next ? 1 : -1;
+                    continue;
+                }
 
                 if (filesInTarget.Count > 0)
                 {
