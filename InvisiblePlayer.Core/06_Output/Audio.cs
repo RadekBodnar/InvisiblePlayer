@@ -89,10 +89,11 @@ namespace InvisiblePlayer.Core.Output
         }
 
         /// <summary>
-        /// True, pokud poslední vygenerovaný vzorek přesáhl rozsah -1.0..1.0
-        /// (tedy došlo k oříznutí). Průchozí hodnota ze ToneEngine.
+        /// True, pokud od posledního volání došlo k oříznutí alespoň jednoho vzorku
+        /// (rozsah -1.0..1.0). Čtení příznak nuluje - stejný princip jako ReadPeak().
+        /// Průchozí hodnota ze ToneEngine.
         /// </summary>
-        public bool ClipDetected => _synth.ClipDetected;
+        public bool ReadClipDetected() => _synth.ReadClipDetected();
 
         public void Dispose()
         {

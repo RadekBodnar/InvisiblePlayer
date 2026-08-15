@@ -39,10 +39,13 @@ namespace InvisiblePlayer.Core.ToneEngine
         // nejbezpečnější, ale poroste hlasitost s přidávanými hlasy nejméně.
         private const double PolyphonyCompensationExponent = 0.5;
 
-        // Nastaví se na true, pokud poslední vygenerovaný vzorek přesáhl rozsah
-        // -1.0..1.0 (tedy Math.Clamp ho musel oříznout). Slouží jako podklad pro
-        // "clip" indikátor ve VU metru - přesnější než jen sledovat dB hodnotu okem.
-        public bool ClipDetected { get; private set; }
+        // Nastaví se na true, jakmile JAKÝKOLI vygenerovaný vzorek přesáhne rozsah
+        // -1.0..1.0 (tedy Math.Clamp ho musel oříznout), a drží se, dokud ho někdo
+        // nepřečte přes ReadClipDetected(). Ořez trvá typicky jediný vzorek (23 us),
+        // zatímco VU metr čte jednou za desítky ms - bez tohoto "zámku" by se
+        // transient ořez prakticky nikdy netrefil do okamžiku čtení.
+        // Zapisuje audio vlákno, čte UI vlákno -> volatile kvůli viditelnosti.
+        private volatile bool _clipSinceLastRead;
 
         public ToneEngine(double sampleRate = 44100.0, Temperament? temperament = null)
         {
@@ -147,9 +150,22 @@ namespace InvisiblePlayer.Core.ToneEngine
 
             double gained = mixedSample * MasterGain * compensation;
 
-            ClipDetected = gained > 1.0 || gained < -1.0;
+            // Pouze nastavujeme (nikdy nenulujeme) - nulování patří výhradně
+            // do ReadClipDetected(), jinak by se ořez ztratil mezi dvěma čteními.
+            if (gained > 1.0 || gained < -1.0) _clipSinceLastRead = true;
 
             return Math.Clamp(gained, -1.0, 1.0);
+        }
+
+        /// <summary>
+        /// Došlo od posledního volání k ořezu alespoň jednoho vzorku? Čtení příznak nuluje
+        /// (stejná sémantika jako AudioEngine.ReadPeak()).
+        /// </summary>
+        public bool ReadClipDetected()
+        {
+            bool clipped = _clipSinceLastRead;
+            _clipSinceLastRead = false;
+            return clipped;
         }
     }
 }
