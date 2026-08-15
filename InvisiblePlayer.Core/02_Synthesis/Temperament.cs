@@ -4,7 +4,15 @@ using InvisiblePlayer.Core.Generators;
 using InvisiblePlayer.Core.Tones;
 using InvisiblePlayer.Core.Input;
 
+namespace InvisiblePlayer.Core.Synthesis;
 
+/// <summary>
+/// Historická temperatura - odchylky ladění jednotlivých tónů od rovnoměrné.
+/// </summary>
+/// <remarks>
+/// OPRAVA L3 (CA1050): třída byla jako jediná v repu v GLOBÁLNÍM namespace,
+/// takže se vnucovala každému konzumentovi assembly.
+/// </remarks>
 public class Temperament
 {
     public string Name { get; set; } = "Rovnoměrná (Equal)";

@@ -1,4 +1,5 @@
-using InvisiblePlayer.Core.Filters;
+﻿using InvisiblePlayer.Core.Filters;
+using InvisiblePlayer.Core.Synthesis;
 using InvisiblePlayer.Core.Generators;
 
 namespace InvisiblePlayer.Core.Tests;

@@ -1,6 +1,6 @@
 ﻿using System;
 using InvisiblePlayer.Core.Generators;
-using InvisiblePlayer.Core.ToneEngine;
+using InvisiblePlayer.Core.Synthesis;
 using NAudio.Wave;
 
 namespace InvisiblePlayer.Core.Output
@@ -9,7 +9,7 @@ namespace InvisiblePlayer.Core.Output
     public class AudioEngine : IWaveProvider, IDisposable
     {
         private WaveOutEvent? _waveOut;
-        private readonly InvisiblePlayer.Core.ToneEngine.ToneEngine _synth;
+        private readonly ToneEngine _synth;
 
         // Nejvyšší absolutní hodnota vzorku od posledního čtení (ReadPeak) - obdoba
         // MaxLeftPeak/MaxRightPeak v AudioPlayer.cs, jen pro mono výstup varhan.
@@ -17,7 +17,7 @@ namespace InvisiblePlayer.Core.Output
 
         public WaveFormat WaveFormat { get; }
 
-        public AudioEngine(InvisiblePlayer.Core.ToneEngine.ToneEngine synth, int sampleRate = 44100)
+        public AudioEngine(ToneEngine synth, int sampleRate = 44100)
         {
             _synth = synth;
             WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1); // 44.1 kHz, Mono, 32-bit Float

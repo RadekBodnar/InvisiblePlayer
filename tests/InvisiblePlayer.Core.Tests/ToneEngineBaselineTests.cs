@@ -1,6 +1,6 @@
-namespace InvisiblePlayer.Core.Tests;
+﻿namespace InvisiblePlayer.Core.Tests;
 
-using ToneEngine = InvisiblePlayer.Core.ToneEngine.ToneEngine;
+using InvisiblePlayer.Core.Synthesis;
 
 /// <summary>
 /// CHARAKTERIZAČNÍ TESTY — zachycují, jak engine zní DNES, ne jak by měl znít.

@@ -1,13 +1,11 @@
-namespace InvisiblePlayer.Core.Tests;
+﻿namespace InvisiblePlayer.Core.Tests;
 
-// Alias MUSÍ být až za deklarací namespace (u file-scoped namespace = uvnitř něj).
-// Důvod: 'InvisiblePlayer.Core.ToneEngine' je NAMESPACE i TŘÍDA. Vyhledávání jména
-// jde zevnitř ven a na každé úrovni bere členy namespacu + using direktivy TÉ úrovně.
-// Alias před deklarací patří k nejvzdálenější úrovni, takže by ho přebil člen
-// 'ToneEngine' namespacu 'InvisiblePlayer.Core' -> CS0118.
-// Stejná kolize nutí Audio.cs psát plně kvalifikované
-// 'InvisiblePlayer.Core.ToneEngine.ToneEngine' na každém místě. Viz TODO S10.
-using ToneEngine = InvisiblePlayer.Core.ToneEngine.ToneEngine;
+// Prostý using stačí. Do opravy S10 to takhle nešlo: namespace se jmenoval
+// 'InvisiblePlayer.Core.ToneEngine' a kolidoval se stejnojmennou třídou, takže
+// holé 'ToneEngine' se uvnitř InvisiblePlayer.Core.* přeložilo na namespace
+// (CS0118) a bylo nutné buď plně kvalifikovat, nebo použít alias umístěný
+// až ZA deklarací namespace. Namespace je nově 'InvisiblePlayer.Core.Synthesis'.
+using InvisiblePlayer.Core.Synthesis;
 
 /// <summary>
 /// Regresní testy k nálezům B1 a B2 z code review 2026-08-15.

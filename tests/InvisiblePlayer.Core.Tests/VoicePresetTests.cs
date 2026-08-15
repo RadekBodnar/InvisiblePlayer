@@ -1,4 +1,4 @@
-using InvisiblePlayer.Core.Generators;
+﻿using InvisiblePlayer.Core.Generators;
 using InvisiblePlayer.Core.Tones;
 
 namespace InvisiblePlayer.Core.Tests;
@@ -116,7 +116,7 @@ public class SynthVoiceTests
     [InlineData(InstrumentType.Bell)]
     public void ToneEngine_RespektujePresetInstrument(InstrumentType instrument)
     {
-        var engine = new InvisiblePlayer.Core.ToneEngine.ToneEngine(44100.0, null, noiseSeed: 1)
+        var engine = new InvisiblePlayer.Core.Synthesis.ToneEngine(44100.0, null, noiseSeed: 1)
         {
             CurrentPreset = new VoicePreset { Instrument = instrument },
         };
@@ -137,7 +137,7 @@ public class SynthVoiceTests
         // průběhy identické.
         static double[] RenderWith(InstrumentType instrument)
         {
-            var engine = new InvisiblePlayer.Core.ToneEngine.ToneEngine(44100.0, null, noiseSeed: 1)
+            var engine = new InvisiblePlayer.Core.Synthesis.ToneEngine(44100.0, null, noiseSeed: 1)
             {
                 CurrentPreset = new VoicePreset { Instrument = instrument },
             };

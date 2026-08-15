@@ -2,7 +2,7 @@
 using InvisiblePlayer.Core.Generators;
 using InvisiblePlayer.Core.Input;      // Pro InputManager
 using InvisiblePlayer.Core.Output;
-using InvisiblePlayer.Core.ToneEngine; // NAČTEME NÁŠ NOVÝ TONEENGINE
+using InvisiblePlayer.Core.Synthesis;
 using System;
 using System.IO;
 using System.Linq;

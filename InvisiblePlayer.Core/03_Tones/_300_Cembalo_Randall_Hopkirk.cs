@@ -1,5 +1,5 @@
 ﻿using InvisiblePlayer.Core.Generators;
-using InvisiblePlayer.Core.ToneEngine;
+using InvisiblePlayer.Core.Synthesis;
 
 namespace InvisiblePlayer.Core.Tones
 {

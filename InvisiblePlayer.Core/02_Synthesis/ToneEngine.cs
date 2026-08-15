@@ -4,7 +4,7 @@ using InvisiblePlayer.Core.Generators;
 using InvisiblePlayer.Core.Tones;
 using InvisiblePlayer.Core.Input;
 
-namespace InvisiblePlayer.Core.ToneEngine
+namespace InvisiblePlayer.Core.Synthesis
 {
     public class ActiveNote
     {
